@@ -4,6 +4,42 @@ body {
     background: #f4f4f4;
 }
 
+/* Nom de l'application sur le dashboard */
+h1.app-title {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-size: 36px;
+    text-align: center;
+    color: #2196F3;
+    margin-bottom: 5px;
+    text-shadow: 1px 1px 3px rgba(0,0,0,0.2);
+}
+
+/* Message de bienvenue */
+h2.welcome-message {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-size: 24px;
+    text-align: center;
+    color: #333;
+    margin-bottom: 25px;
+    font-weight: 400;
+}
+
+/* Titre de l'éditeur Markdown */
+h2.editor-title {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-size: 32px;
+    text-align: center;
+    color: #4CAF50;
+    margin-bottom: 20px;
+    text-shadow: 1px 1px 4px rgba(0,0,0,0.2);
+    letter-spacing: 1px;
+    transition: color 0.3s ease;
+}
+
+h2.editor-title:hover {
+    color: #388E3C;
+}
+
 h2 {
     color: #333;
 }
