@@ -74,14 +74,16 @@ if (is_admin()) {
 </head>
 <body>
 <div class="dashboard-container">
-    <h2>Bienvenue <?= htmlspecialchars($_SESSION['user']) ?> (<?= htmlspecialchars($userRole) ?>)</h2>
+	<h1 class="app-title">mdWriter</h1>
+	<h2 class="welcome-message">Bienvenue <?= htmlspecialchars($_SESSION['user']) ?> (<?= htmlspecialchars($userRole) ?>)</h2>
 
     <div class="dashboard-actions">
         <a class="btn" href="editor.php">➕ Nouveau rapport</a>
-        <a class="btn" href="logout.php">Déconnexion</a>
         <?php if(is_admin()): ?>
-            <a class="btn" href="#adminUsersSection" id="toggleAdminUsers">⚙️ Gérer les utilisateurs</a>
+            <a class="btn" href="#adminUsersSection" id="toggleAdminUsers">⚙️ Gérer les utilisateurs</a>		
+			<a class="btn" href="#" id="showAuthLog">📜 Voir le journal</a>
         <?php endif; ?>
+		<a class="btn" href="logout.php">Déconnexion</a>
     </div>
 
     <h3>Vos projets</h3>
@@ -105,7 +107,9 @@ if (is_admin()) {
     <?php if(is_admin()): ?>
     <div id="adminUsersSection" style="display:none; margin-top:30px;">
         <h3>Administration des utilisateurs</h3>
-        <?php if($adminMessage) echo "<p style='color:green;'>$adminMessage</p>"; ?>
+		<?php if($adminMessage): ?>
+			<p id="adminMessage" style="color:green;"><?= htmlspecialchars($adminMessage) ?></p>
+		<?php endif; ?>
 
         <!-- Formulaire ajout utilisateur -->
         <form method="post" style="margin-bottom:15px;">
@@ -151,6 +155,16 @@ if (is_admin()) {
         </table>
     </div>
     <?php endif; ?>
+	<?php if(is_admin()): ?>
+	<div id="authLogModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; 
+		background: rgba(0,0,0,0.5); justify-content:center; align-items:center; z-index:1000;">
+		<div style="background:#fff; padding:20px; border-radius:8px; max-width:700px; width:90%; max-height:80%; overflow:auto; position:relative;">
+			<h3>Journal des connexions</h3>
+			<div id="authLogContent" style="white-space: pre-wrap; font-family: monospace; background:#f4f4f4; padding:10px; border-radius:5px; height:400px; overflow:auto;"></div>
+			<button id="closeAuthLog" style="margin-top:10px; padding:8px 12px;">Fermer</button>
+		</div>
+	</div>
+	<?php endif; ?>
 
 </div>
 
@@ -250,6 +264,40 @@ document.getElementById('toggleAdminUsers').addEventListener('click', function(e
     section.scrollIntoView({behavior: 'smooth'});
 });
 <?php endif; ?>
+<?php if(is_admin()): ?>
+document.getElementById('showAuthLog').addEventListener('click', function(e){
+    e.preventDefault();
+    fetch('get_auth_log.php')
+        .then(response => response.text())
+        .then(data => {
+            // Séparer le contenu en lignes
+            const lines = data.split('\n');
+            const coloredLines = lines.map(line => {
+                if (line.toLowerCase().includes('success') || line.toLowerCase().includes('réussi')) {
+                    return `<span style="color:green;">${line}</span>`;
+                } else if (line.toLowerCase().includes('fail') || line.toLowerCase().includes('échec')) {
+                    return `<span style="color:red;">${line}</span>`;
+                } else {
+                    return line;
+                }
+            });
+            document.getElementById('authLogContent').innerHTML = coloredLines.join('<br>');
+            document.getElementById('authLogModal').style.display = 'flex';
+        });
+});
+
+document.getElementById('closeAuthLog').addEventListener('click', function(){
+    document.getElementById('authLogModal').style.display = 'none';
+});
+<?php endif; ?>
+const adminMsg = document.getElementById('adminMessage');
+if (adminMsg) {
+    setTimeout(() => {
+        adminMsg.style.transition = "opacity 1s ease";
+        adminMsg.style.opacity = "0";
+        setTimeout(() => adminMsg.remove(), 1000); // suppression après fondu
+    }, 15000); // 15 secondes
+}
 </script>
 
 </body>
