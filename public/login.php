@@ -4,7 +4,10 @@ require_once __DIR__ . '/../inc/auth.php';
 
 $error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (login($_POST['username'], $_POST['password'])) {
+    $username = $_POST['username'];
+    $password = $_POST['password'];
+
+    if (login($username, $password)) {
         header("Location: dashboard.php");
         exit;
     } else {

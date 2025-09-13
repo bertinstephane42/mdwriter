@@ -14,7 +14,7 @@ if (isset($_GET['id'])) {
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Éditeur Markdown</title>
+    <title class="editor-title">Éditeur Markdown</title>
     <link rel="stylesheet" href="assets/css/simplemde.min.css">
     <link rel="stylesheet" href="assets/css/style.css">
     <script src="assets/js/simplemde.min.js"></script>
@@ -22,7 +22,7 @@ if (isset($_GET['id'])) {
     <script src="assets/js/html2canvas.min.js"></script>
 </head>
 <body>
-<h2>Éditeur Markdown</h2>
+<h2 class="editor-title">Éditeur Markdown</h1>
 
 <form id="editorForm">
     <input type="hidden" name="id" value="<?= htmlspecialchars($projectId ?? '') ?>">
