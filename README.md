@@ -107,17 +107,15 @@ Utilisation
   1. Ouvrir public/index.php dans votre navigateur.
   2. Créer un compte utilisateur (register.php) ou se connecter (login.php).
   3. Depuis le tableau de bord (dashboard.php) :
-    * Créer un nouveau projet
-    * Éditer, télécharger ou supprimer vos projets
-    * Exporter en PDF, Markdown ou HTML
+     - Créer un nouveau projet
+     - Éditer, télécharger ou supprimer vos projets
+     - Exporter en PDF, Markdown ou HTML
   4. Pour un administrateur :
-    * Gérer les utilisateurs (ajouter, supprimer, modifier le rôle)
-    * Supprimer un utilisateur supprime également ses données (storage/users/<username>)
+     - Gérer les utilisateurs (ajouter, supprimer, modifier le rôle)
+     - Supprimer un utilisateur supprime également ses données (storage/users/<username>)
 
 Sécurité
-  * Les dossiers sensibles (inc/, storage/) sont protégés par .htaccess.
-  * Les mots de passe sont stockés hachés avec password_hash().
-  * Les endpoints AJAX sont accessibles uniquement pour les utilisateurs connectés.
-  * Les utilisateurs ne peuvent accéder qu’à leurs propres projets.
-
-
+  - Les dossiers sensibles (inc/, storage/) sont protégés par .htaccess.
+  - Les mots de passe sont stockés hachés avec password_hash().
+  - Les endpoints AJAX sont accessibles uniquement pour les utilisateurs connectés.
+  - Les utilisateurs ne peuvent accéder qu’à leurs propres projets.
