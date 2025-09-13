@@ -48,38 +48,39 @@
 ## Architecture
 
 / mdwriter/
-* public/                  Pages accessibles via le navigateur
-  * index.php
-  * login.php
-  * register.php
-  * dashboard.php
-  * editor.php
-  * download.php
-  * logout.php
-  * api/
-    * projects.php
-  * assets/
-    * css/
-      * style.css
-      * simplemde.min.css
-    * js/
-      * app.js
-      * simplemde.min.js
-      * jspdf.umd.min.js
-      * html2canvas.min.js
-* inc/                     Fichiers PHP backend
-  * .htaccess
-  * auth.php
-  * projects.php
-  * exports.php
-  * parsedown.php
-* storage/
-  * users/
-    * .htaccess
-    * users.json           Stockage des utilisateurs (JSON)
-* logs/
-  * .htaccess
-  * auth.log              Logs d'authentification
+
+- public/
+  - index.php
+  - login.php
+  - register.php
+  - dashboard.php
+  - editor.php
+  - download.php
+  - logout.php
+  - api/
+    - projects.php
+  - assets/
+    - css/
+      - style.css
+      - simplemde.min.css
+    - js/
+      - app.js
+      - simplemde.min.js
+      - jspdf.umd.min.js
+      - html2canvas.min.js
+- inc/                     Fichiers PHP backend
+  - .htaccess
+  - auth.php
+  - projects.php
+  - exports.php
+  - parsedown.php
+- storage/
+  - users/
+    - .htaccess
+    - users.json           
+- logs/
+  - .htaccess
+  - auth.log       
 
 ---
 
