@@ -45,42 +45,40 @@
 
 ## Architecture
 
-/mdwriter/
-│
-├── /public/ # Pages accessibles via le navigateur
-│ ├── index.php
-│ ├── login.php
-│ ├── register.php
-│ ├── dashboard.php
-│ ├── editor.php
-│ ├── download.php
-│ ├── logout.php
-│ ├── /api/
-│ │ └── projects.php
-│ ├── /assets/
-│ │ ├── /css/
-│ │ │ ├── style.css
-│ │ │ └── simplemde.min.css
-│ │ └── /js/
-│ │ ├── app.js
-│ │ ├── simplemde.min.js
-│ │ ├── jspdf.umd.min.js
-│ │ └── html2canvas.min.js
-│ └── /uploads/ # Stockage des fichiers utilisateurs (protégé par .htaccess)
-│
-├── /inc/ # Fichiers PHP backend
-│ ├── auth.php
-│ ├── projects.php
-│ ├── exports.php
-│ ├── log.php
-│ └── parsedown.php
-│
-├── /storage/
-│ └── /users/
-│ └── users.json # Stockage des utilisateurs (JSON)
-│
-└── /logs/
-└── errors.log # Logs d'erreurs
+## Architecture
+
+/ mdwriter/
+- public/                  Pages accessibles via le navigateur
+  - index.php
+  - login.php
+  - register.php
+  - dashboard.php
+  - editor.php
+  - download.php
+  - logout.php
+  - api/
+    - projects.php
+  - assets/
+    - css/
+      - style.css
+      - simplemde.min.css
+    - js/
+      - app.js
+      - simplemde.min.js
+      - jspdf.umd.min.js
+      - html2canvas.min.js
+  - uploads/               Stockage des fichiers utilisateurs (protégé par .htaccess)
+- inc/                     Fichiers PHP backend
+  - auth.php
+  - projects.php
+  - exports.php
+  - log.php
+  - parsedown.php
+- storage/
+  - users/
+    - users.json           Stockage des utilisateurs (JSON)
+- logs/
+  - errors.log             Logs d'erreurs
 
 ---
 
