@@ -85,7 +85,7 @@
 ## Installation
 
 1. Cloner le dépôt sur votre serveur web :
-   ```bash
+```bash
 git clone https://github.com/votre-utilisateur/mdwriter.git
 ```
 
