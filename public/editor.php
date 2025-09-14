@@ -110,18 +110,41 @@ echo "$exemple"
 <script>
 document.addEventListener("DOMContentLoaded", function() {
     const projectId = "<?= $projectId ?? '' ?>";
-    let simplemde = new SimpleMDE({
+	let simplemde = new SimpleMDE({
 		element: document.getElementById("editor"),
 		spellChecker: false,
 		autosave: { enabled: true, uniqueId: "mdwriter_autosave", delay: 1000 },
 		status: false,
-		toolbar: [ "bold","italic","strikethrough","heading","|","code","quote","unordered-list", "ordered-list","link","image","table","horizontal-rule","preview", "side-by-side","fullscreen","|",
-		{ name: "guide",
-		action: function() {
-			const modal = document.getElementById("helpModal"); modal.style.display = "block"; }, className: "fa fa-question-circle", title: "Aide Markdown"
+		toolbar: [
+			{ name: "bold", action: SimpleMDE.toggleBold, className: "fa fa-bold", title: "Gras" },
+			{ name: "italic", action: SimpleMDE.toggleItalic, className: "fa fa-italic", title: "Italique" },
+			{ name: "strikethrough", action: SimpleMDE.toggleStrikethrough, className: "fa fa-strikethrough", title: "Barré" },
+			{ name: "heading", action: SimpleMDE.toggleHeadingSmaller, className: "fa fa-header", title: "Titre" },
+			"|",
+			{ name: "code", action: SimpleMDE.toggleCodeBlock, className: "fa fa-code", title: "Bloc de code" },
+			{ name: "quote", action: SimpleMDE.toggleBlockquote, className: "fa fa-quote-left", title: "Citation" },
+			{ name: "unordered-list", action: SimpleMDE.toggleUnorderedList, className: "fa fa-list-ul", title: "Liste à puces" },
+			{ name: "ordered-list", action: SimpleMDE.toggleOrderedList, className: "fa fa-list-ol", title: "Liste numérotée" },
+			{ name: "link", action: SimpleMDE.drawLink, className: "fa fa-link", title: "Lien" },
+			{ name: "image", action: SimpleMDE.drawImage, className: "fa fa-picture-o", title: "Image" },
+			{ name: "table", action: SimpleMDE.drawTable, className: "fa fa-table", title: "Tableau" },
+			{ name: "horizontal-rule", action: SimpleMDE.drawHorizontalRule, className: "fa fa-minus", title: "Ligne horizontale" },
+			{ name: "preview", action: SimpleMDE.togglePreview, className: "fa fa-eye no-disable", title: "Aperçu" },
+			{ name: "side-by-side", action: SimpleMDE.toggleSideBySide, className: "fa fa-columns no-disable no-mobile", title: "Côte à côte" },
+			{ name: "fullscreen", action: SimpleMDE.toggleFullScreen, className: "fa fa-arrows-alt no-disable no-mobile", title: "Plein écran" },
+			"|",
+			{
+				name: "guide",
+				action: function() {
+					const modal = document.getElementById("helpModal");
+					modal.style.display = "block";
+				},
+				className: "fa fa-question-circle",
+				title: "Aide Markdown"
 			}
 		]
 	});
+
 
     // Si c'est un nouveau projet, vider explicitement le contenu
     if (!projectId) {

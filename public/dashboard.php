@@ -79,11 +79,16 @@ if (is_admin()) {
 
     <div class="dashboard-actions">
         <a class="btn" href="editor.php">➕ Nouveau rapport</a>
+	   <form id="importForm" action="import_project.php" method="post" enctype="multipart/form-data" style="display:inline; margin:0; padding:0; border:none; background:none;">
+			<label for="importFile" class="btn">📂 Importer rapport</label>
+			<input type="file" id="importFile" name="projectFile" accept="application/json" style="display:none;" onchange="this.form.submit();">
+		</form>
+
         <?php if(is_admin()): ?>
-            <a class="btn" href="#adminUsersSection" id="toggleAdminUsers">⚙️ Gérer les utilisateurs</a>		
-			<a class="btn" href="#" id="showAuthLog">📜 Voir le journal</a>
+            <a class="btn btn-admin" href="#adminUsersSection" id="toggleAdminUsers">⚙️ Gérer les utilisateurs</a>		
+			<a class="btn btn-log" href="#" id="showAuthLog">📜 Voir le journal</a>
         <?php endif; ?>
-		<a class="btn" href="logout.php">Déconnexion</a>
+		<a class="btn btn-logout" href="logout.php">Déconnexion</a>
     </div>
 
     <h3>Vos projets</h3>
@@ -92,15 +97,16 @@ if (is_admin()) {
     <?php else: ?>
         <ul class="projects-list">
         <?php foreach ($projects as $p): ?>
-            <li>
-                <strong><?= htmlspecialchars($p['title']) ?></strong> 
-                [<a href="editor.php?id=<?= urlencode($p['id']) ?>">éditer</a>]
-                [<a href="delete_project.php?id=<?= urlencode($p['id']) ?>" class="deleteLink">supprimer</a>]
-                [<a href="download.php?id=<?= urlencode($p['id']) ?>&format=json">json</a>]
-                [<a href="download.php?id=<?= urlencode($p['id']) ?>&format=md">md</a>]
-                [<a href="download.php?id=<?= urlencode($p['id']) ?>&format=html">html</a>]
-            </li>
-        <?php endforeach; ?>
+			<li>
+				<strong><?= htmlspecialchars($p['title']) ?></strong> 
+				[<a href="editor.php?id=<?= urlencode($p['id']) ?>" class="action-edit">éditer</a>]
+				[<a href="delete_project.php?id=<?= urlencode($p['id']) ?>" class="action-delete">supprimer</a>]
+				[<a href="download.php?id=<?= urlencode($p['id']) ?>&format=json" class="action-export">json</a>]
+				[<a href="download.php?id=<?= urlencode($p['id']) ?>&format=md" class="action-export">md</a>]
+				[<a href="download.php?id=<?= urlencode($p['id']) ?>&format=html" class="action-export">html</a>]
+			</li>
+		<?php endforeach; ?>
+
         </ul>
     <?php endif; ?>
 
