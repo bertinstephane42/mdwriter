@@ -194,3 +194,133 @@ form input[type="submit"]:hover {
         padding: 15px;
     }
 }
+
+/* Boutons génériques */
+.btn {
+    display: inline-block;
+    padding: 8px 14px;
+    margin: 5px;
+    border-radius: 5px;
+    text-decoration: none;
+    font-weight: bold;
+    color: #fff;
+    background-color: #4CAF50; /* par défaut : vert */
+    transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+.btn:hover {
+    background-color: #45a049;
+    transform: scale(1.02);
+}
+
+/* Boutons Admin : danger */
+a.btn.btn-admin {
+    background-color: #e53935 !important; /* rouge */
+}
+a.btn.btn-admin:hover {
+    background-color: #c62828 !important;
+}
+
+/* Boutons Log : neutre mais sérieux */
+a.btn.btn-log {
+    background-color: #3f51b5 !important; /* bleu indigo */
+}
+a.btn.btn-log:hover {
+    background-color: #303f9f !important;
+}
+
+/* Bouton Déconnexion : neutre (gris) */
+a.btn.btn-logout {
+    background-color: #757575; /* gris moyen */
+}
+a.btn.btn-logout:hover {
+    background-color: #616161; /* gris foncé au survol */
+}
+
+/* Style commun pour les actions */
+li a {
+    font-weight: bold;
+    padding: 2px 6px;
+    border-radius: 3px;
+    text-decoration: none;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* Action Éditer (bleu) */
+.action-edit {
+    color: #1565c0; /* bleu foncé */
+}
+.action-edit:hover {
+    background-color: #1565c0;
+    color: #fff;
+}
+
+/* Action Supprimer (rouge) */
+.action-delete {
+    color: #c62828;
+}
+.action-delete:hover {
+    background-color: #c62828;
+    color: #fff;
+}
+
+/* Actions Export (violet) */
+.action-export {
+    color: #6a1b9a; /* violet foncé */
+}
+.action-export:hover {
+    background-color: #6a1b9a;
+    color: #fff;
+}
+
+/* Tous les boutons ont exactement la même base visuelle */
+.dashboard-actions a.btn,
+.dashboard-actions label.btn,
+.dashboard-actions button.btn {
+    appearance: none;         /* supprime les styles natifs */
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    display: inline-block;
+    padding: 10px 20px;
+    margin: 5px;
+    min-width: 160px;         /* largeur homogène */
+    text-align: center;
+    background-color: #4CAF50;
+    color: #fff;
+    font-size: 14px;
+    font-weight: bold;
+    border: none;
+    border-radius: 5px;
+    text-decoration: none;
+    cursor: pointer;
+    box-sizing: border-box;
+}
+
+/* Hover identique */
+.dashboard-actions a.btn:hover,
+.dashboard-actions label.btn:hover,
+.dashboard-actions button.btn:hover {
+    background-color: #45a049;
+    text-decoration: none;
+    color: #fff;
+}
+
+/* Variantes de couleur */
+.dashboard-actions .btn-admin { background-color: #2196F3; }
+.dashboard-actions .btn-admin:hover { background-color: #1976D2; }
+
+.dashboard-actions .btn-log { background-color: #9C27B0; }
+.dashboard-actions .btn-log:hover { background-color: #7B1FA2; }
+
+/* Bouton Déconnexion : neutre (gris) - doit passer après la règle générale */
+.dashboard-actions a.btn-logout,
+.dashboard-actions label.btn-logout,
+.dashboard-actions button.btn-logout {
+    background-color: #757575;
+    color: #fff;
+}
+.dashboard-actions a.btn-logout:hover,
+.dashboard-actions label.btn-logout:hover,
+.dashboard-actions button.btn-logout:hover {
+    background-color: #616161;
+}
