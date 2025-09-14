@@ -71,6 +71,9 @@ if (is_admin()) {
     <meta charset="UTF-8">
     <title>Tableau de bord</title>
     <link rel="stylesheet" href="assets/css/style.css">
+	<script src="assets/js/simplemde.min.js"></script>
+    <script src="assets/js/html2canvas.min.js"></script>
+	<script src="assets/js/html2pdf.bundle.min.js"></script>
 </head>
 <body>
 <div class="dashboard-container">
@@ -104,6 +107,7 @@ if (is_admin()) {
 				[<a href="download.php?id=<?= urlencode($p['id']) ?>&format=json" class="action-export">json</a>]
 				[<a href="download.php?id=<?= urlencode($p['id']) ?>&format=md" class="action-export">md</a>]
 				[<a href="download.php?id=<?= urlencode($p['id']) ?>&format=html" class="action-export">html</a>]
+				[<a href="#" class="action-export btn-export-pdf" data-id="<?= htmlspecialchars($p['id']) ?>">pdf</a>]
 			</li>
 		<?php endforeach; ?>
 
@@ -304,6 +308,112 @@ if (adminMsg) {
         setTimeout(() => adminMsg.remove(), 1000); // suppression après fondu
     }, 15000); // 15 secondes
 }
+
+async function exportProjectPDF(projectId) {
+    try {
+        // 1️⃣ Récupérer le HTML complet du projet
+        const res = await fetch(`download.php?id=${encodeURIComponent(projectId)}&format=html`, { credentials: 'same-origin' });
+        if (!res.ok) throw new Error(`Erreur réseau : ${res.status}`);
+        const htmlContent = await res.text();
+
+        // 2️⃣ Parser la réponse
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(htmlContent, "text/html");
+
+		// 3️⃣ Extraire le titre (h1 en général dans ton rapport HTML)
+        let title = doc.querySelector("h1")?.textContent?.trim() || "rapport";
+        // Nettoyage du titre pour en faire un nom de fichier valide
+        title = title.replace(/[<>:"/\\|?*]+/g, "_");
+
+        // 4️⃣ Ajouter des styles PDF-friendly
+        const pdfStyles = `
+            <style>
+                /* Amélioration des citations */
+                blockquote {
+                    border-left: 4px solid #ccc;
+                    background: #f9f9f9;
+                    padding: 10px 15px;
+                    margin: 12px 0;
+                    font-style: italic;
+                    page-break-inside: avoid;
+                }
+
+                /* Code et préformaté */
+                pre, code {
+                    background: #f4f4f4;
+                    padding: 8px 10px;
+                    border-radius: 4px;
+                    display: block;
+                    font-family: monospace;
+                    overflow-x: auto;
+                    page-break-inside: avoid;
+                }
+
+                /* Tableaux */
+                table {
+                    border-collapse: collapse;
+                    width: 100%;
+                    margin: 12px 0;
+                    page-break-inside: avoid;
+                }
+                th, td {
+                    border: 1px solid #ccc;
+                    padding: 6px;
+                    text-align: left;
+                }
+
+                /* Images */
+                img {
+                    max-width: 100%;
+                    height: auto;
+                    page-break-inside: avoid;
+                }
+
+                /* Titres */
+                h1, h2, h3, h4 {
+                    page-break-after: avoid;
+                }
+
+                /* Sauts de page forcés */
+                .page-break {
+                    page-break-before: always;
+                }
+            </style>
+        `;
+
+        // 5️⃣ Construire le HTML complet
+        const fullHTML = `
+            <html>
+                <head>
+                    ${document.head.innerHTML}
+                    ${pdfStyles}
+                </head>
+                <body>
+                    ${doc.body.innerHTML}
+                </body>
+            </html>
+        `;
+
+        // 6️⃣ Générer le PDF
+        await html2pdf().set({
+            margin: 10,
+            filename: `rapport_${title}.pdf`,
+            html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        }).from(fullHTML).save();
+
+    } catch (err) {
+        console.error('Erreur export PDF', err);
+        alert("Erreur lors de la génération du PDF. Vérifie la console.");
+    }
+}
+
+document.body.addEventListener('click', function(e) {
+    const btn = e.target.closest('.btn-export-pdf');
+    if (!btn) return;
+    e.preventDefault();
+    exportProjectPDF(btn.dataset.id);
+});
 </script>
 
 </body>

@@ -18,7 +18,6 @@ if (isset($_GET['id'])) {
     <link rel="stylesheet" href="assets/css/simplemde.min.css">
     <link rel="stylesheet" href="assets/css/style.css">
     <script src="assets/js/simplemde.min.js"></script>
-    <script src="assets/js/jspdf.umd.min.js"></script>
     <script src="assets/js/html2canvas.min.js"></script>
 </head>
 <body>
@@ -29,7 +28,6 @@ if (isset($_GET['id'])) {
     <input type="text" name="title" placeholder="Titre" value="<?= htmlspecialchars($project['title'] ?? '') ?>"><br>
     <textarea id="editor" name="markdown"><?= htmlspecialchars($project['markdown'] ?? '') ?></textarea><br>
     <button type="submit" name="action" value="save">💾 Sauvegarder</button>
-    <button type="button" id="exportPdfBtn">📄 Exporter en PDF</button>
     <p>
         <button type="button" id="backDashboardBtn">🏠 Retour au dashboard</button>
     </p>
@@ -200,38 +198,6 @@ document.addEventListener("DOMContentLoaded", function() {
 		.catch(err => {
 			saveMessage.textContent = "Erreur lors de la sauvegarde ❌";
 			console.error("Erreur réseau :", err);
-		});
-	});
-
-    // Export PDF
-    const exportBtn = document.getElementById("exportPdfBtn");
-	exportBtn.addEventListener("click", function() {
-		// Récupérer le contenu HTML rendu par SimpleMDE
-		const htmlContent = simplemde.options.previewRender(simplemde.value());
-		
-		// Créer une div temporaire invisible avec le HTML rendu
-		const tempDiv = document.createElement("div");
-		tempDiv.style.position = "absolute";
-		tempDiv.style.left = "-9999px"; // hors écran
-		tempDiv.innerHTML = htmlContent;
-		document.body.appendChild(tempDiv);
-
-		// Appliquer les styles CSS pour que le PDF ressemble à l'aperçu
-		tempDiv.style.fontFamily = "Arial, sans-serif";
-		tempDiv.style.padding = "20px";
-		tempDiv.style.width = "800px"; // largeur fixe pour PDF
-
-		// Générer PDF avec html2canvas
-		html2canvas(tempDiv).then(canvas => {
-			const imgData = canvas.toDataURL("image/png");
-			const pdf = new jspdf.jsPDF('p', 'mm', 'a4');
-			const pdfWidth = pdf.internal.pageSize.getWidth();
-			const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-			pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-			pdf.save("rapport.pdf");
-
-			// Supprimer la div temporaire
-			document.body.removeChild(tempDiv);
 		});
 	});
 	
