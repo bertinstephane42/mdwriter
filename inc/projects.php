@@ -1,6 +1,4 @@
 <?php
-error_reporting(E_ALL & ~E_NOTICE); // désactive notices
-ob_start(); // démarre le buffer pour capter toute sortie accidentelle
 session_start();
 
 // Vérification utilisateur connecté
@@ -98,6 +96,28 @@ function loadProject($id) {
 function deleteProject($id) {
     $file = projects_dir() . '/' . basename($id) . '.json';
     if (file_exists($file)) unlink($file);
+}
+
+/* Importe un projet */
+function importProject($data) {
+    $dir = projects_dir();
+    if (!is_dir($dir)) mkdir($dir, 0777, true);
+
+    // Forcer un titre valide
+    if (!isset($data['title']) || trim($data['title']) === '') {
+        $data['title'] = 'Nouveau projet';
+    }
+
+    // Forcer date si absente
+    if (!isset($data['date'])) {
+        $data['date'] = date("Y-m-d H:i");
+    }
+
+    $id = "proj_" . substr(md5(uniqid('', true)), 0, 9);
+    $file = "$dir/$id.json";
+    file_put_contents($file, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+
+    return $id;
 }
 
 /**
