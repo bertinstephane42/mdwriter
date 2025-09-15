@@ -11,18 +11,22 @@ if (!isset($_SESSION['user'])) {
 }
 
 // Répertoires
-function user_dir() {
-    return __DIR__ . '/../storage/users/' . $_SESSION['user'];
+function user_dir(): string {
+    return __DIR__ . '/../storage/users/' . preg_replace('/[^a-zA-Z0-9_\-]/', '', $_SESSION['user']);
 }
 
-function projects_dir() {
-    return user_dir() . '/projects';
+function projects_dir(): string {
+    $dir = user_dir() . '/projects';
+    if (!is_dir($dir)) {
+        mkdir($dir, 0755, true);
+    }
+    return $dir;
 }
 
 /**
  * Liste tous les projets de l'utilisateur
  */
-function listProjects($username = null) {
+function listProjects(): array {
     $dir = projects_dir();
     $projects = [];
 
@@ -31,91 +35,131 @@ function listProjects($username = null) {
     $files = glob($dir . '/*.json');
     foreach ($files as $file) {
         $data = json_decode(file_get_contents($file), true);
+        if (!is_array($data)) continue;
         $projects[] = [
             'id' => pathinfo($file, PATHINFO_FILENAME),
-            'title' => $data['title'] ?? pathinfo($file, PATHINFO_FILENAME),
+            'title' => htmlspecialchars($data['title'] ?? pathinfo($file, PATHINFO_FILENAME), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'),
             'date' => $data['date'] ?? date("Y-m-d H:i", filemtime($file)),
             'markdown' => $data['markdown'] ?? ''
         ];
     }
+
     return $projects;
 }
 
 /**
  * Sauvegarde un nouveau projet
  */
-function saveProject($title, $markdown) {
+function saveProject(string $title, string $markdown): string {
     $title = trim($title);
     if ($title === '') {
         throw new InvalidArgumentException("Le titre est obligatoire.");
     }
 
     $dir = projects_dir();
-    if (!is_dir($dir)) mkdir($dir, 0777, true);
-
     $id = uniqid("proj_");
     $data = [
-        'title' => $title,
-        'markdown' => $markdown,
+        'title' => mb_substr($title, 0, 255),
+        'markdown' => is_string($markdown) ? $markdown : '',
         'date' => date("Y-m-d H:i")
     ];
-    file_put_contents("$dir/$id.json", json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+
+    $file = "$dir/$id.json";
+    if (file_put_contents($file, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) === false) {
+        throw new RuntimeException("Impossible de sauvegarder le projet.");
+    }
+
     return $id;
 }
 
 /**
  * Met à jour un projet existant
  */
-function updateProject($id, $title, $markdown) {
-    $dir = projects_dir();
-    if (!is_dir($dir)) mkdir($dir, 0777, true);
-
+function updateProject(string $id, string $title, string $markdown): void {
     $id = basename($id);
-    $file = "$dir/$id.json";
+    $file = projects_dir() . "/$id.json";
+
+    if (!file_exists($file)) {
+        throw new RuntimeException("Le projet $id n'existe pas.");
+    }
 
     $data = [
-        'title' => $title,
-        'markdown' => $markdown,
+        'title' => mb_substr(trim($title), 0, 255),
+        'markdown' => is_string($markdown) ? $markdown : '',
         'date' => date("Y-m-d H:i")
     ];
+
     file_put_contents($file, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
 }
 
 /**
- * Charge un projet spécifique
+ * Charge un projet spécifique de l'utilisateur courant
  */
-function loadProject($id) {
+function loadProject(string $id): ?array {
     $file = projects_dir() . '/' . basename($id) . '.json';
     if (!file_exists($file)) return null;
-    return json_decode(file_get_contents($file), true);
+
+    $content = file_get_contents($file);
+    if ($content === false) {
+        throw new RuntimeException("Impossible de lire le projet : $id");
+    }
+
+    $data = json_decode($content, true);
+    if (!is_array($data)) {
+        throw new RuntimeException("Projet invalide ou corrompu : $id");
+    }
+
+    // Échapper le titre pour affichage
+    if (isset($data['title'])) {
+        $data['title'] = htmlspecialchars($data['title'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+    }
+
+    return $data;
 }
 
 /**
  * Supprime un projet
  */
-function deleteProject($id) {
+function deleteProject(string $id): void {
     $file = projects_dir() . '/' . basename($id) . '.json';
-    if (file_exists($file)) unlink($file);
+    if (!file_exists($file)) {
+        throw new RuntimeException("Le projet $id n'existe pas.");
+    }
+    unlink($file);
 }
 
-/* Importe un projet */
-function importProject($data) {
+/**
+ * Importe un projet (sécurisé)
+ */
+function importProject(array $data): string {
     $dir = projects_dir();
-    if (!is_dir($dir)) mkdir($dir, 0777, true);
 
-    // Forcer un titre valide
-    if (!isset($data['title']) || trim($data['title']) === '') {
-        $data['title'] = 'Nouveau projet';
+    if (!is_dir($dir) && !mkdir($dir, 0755, true) && !is_dir($dir)) {
+        throw new RuntimeException("Impossible de créer le répertoire projets.");
     }
 
-    // Forcer date si absente
-    if (!isset($data['date'])) {
-        $data['date'] = date("Y-m-d H:i");
-    }
+    $allowedKeys = ['title', 'markdown', 'date'];
+    $projectData = array_intersect_key($data, array_flip($allowedKeys));
 
-    $id = "proj_" . substr(md5(uniqid('', true)), 0, 9);
+    $title = trim($projectData['title'] ?? '');
+    if ($title === '') $title = 'Nouveau projet';
+    $projectData['title'] = mb_substr($title, 0, 255);
+
+    $markdown = $projectData['markdown'] ?? '';
+    $projectData['markdown'] = is_string($markdown) ? $markdown : '';
+
+    $date = $projectData['date'] ?? date("Y-m-d H:i");
+    if (!preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/', $date)) {
+        $date = date("Y-m-d H:i");
+    }
+    $projectData['date'] = $date;
+
+    $id = uniqid("proj_");
     $file = "$dir/$id.json";
-    file_put_contents($file, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+
+    if (file_put_contents($file, json_encode($projectData, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) === false) {
+        throw new RuntimeException("Impossible de sauvegarder le projet importé.");
+    }
 
     return $id;
 }
@@ -131,9 +175,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     $id = $_POST['id'] ?? null;
 
     try {
-        if ($title === '') {
-            throw new InvalidArgumentException("Le titre est obligatoire.");
-        }
+        if ($title === '') throw new InvalidArgumentException("Le titre est obligatoire.");
 
         if ($id && file_exists(projects_dir() . '/' . basename($id) . '.json')) {
             updateProject($id, $title, $markdown);

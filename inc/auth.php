@@ -71,9 +71,18 @@ function login($username, $password) {
     return false;
 }
 
-function register($username, $password, $role = 'user') {
+function register($username, $password, $role = 'user') { 
     $users = load_users();
-    if (isset($users[$username])) return false;
+    if (isset($users[$username])) {
+        return ['success' => false, 'error' => "Nom d'utilisateur déjà pris."];
+    }
+
+    // --- Vérification du mot de passe ---
+    if (!preg_match('/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\/.!+?=\-_*$]).{10,}$/', $password)) {
+        return ['success' => false, 'error' => "Le mot de passe doit contenir au moins 10 caractères, dont une majuscule, une minuscule, un chiffre et un caractère spécial (/ . ! + ? = - _ * $)."];
+    }
+
+    // --- Création de l'utilisateur ---
     $users[$username] = [
         'username' => $username,
         'password' => password_hash($password, PASSWORD_DEFAULT),
@@ -81,10 +90,25 @@ function register($username, $password, $role = 'user') {
     ];
     save_users($users);
 
+    // --- Création du répertoire projets ---
     $userDir = __DIR__ . "/../storage/users/$username";
-    if (!is_dir("$userDir/projects")) mkdir("$userDir/projects", 0755, true);
+    $projectsDir = "$userDir/projects";
+    if (!is_dir($projectsDir)) mkdir($projectsDir, 0755, true);
 
-    return true;
+    // --- Copie du template JSON ---
+    $templateFile = __DIR__ . "/../public/templates/template1.json";
+    if (file_exists($templateFile)) {
+        $randomStr = bin2hex(random_bytes(8)); // 16 caractères hex
+        $newFile = "$projectsDir/proj_$randomStr.json";
+
+        if (!copy($templateFile, $newFile)) {
+            error_log("Erreur lors de la copie du template pour l'utilisateur $username");
+        }
+    } else {
+        error_log("Template non trouvé : $templateFile");
+    }
+
+    return ['success' => true];
 }
 
 function is_admin() {
