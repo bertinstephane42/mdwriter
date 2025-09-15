@@ -1,3 +1,0 @@
-# Interdire tout accès direct depuis le navigateur
-Order allow,deny
-Deny from all
