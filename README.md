@@ -1,6 +1,6 @@
 # mdwriter
 
-**mdwriter** est une application web légère de gestion et d’édition de documents Markdown. Elle permet aux utilisateurs de créer, éditer, exporter et gérer leurs projets Markdown depuis un navigateur. L’application intègre également un système d’administration pour gérer les utilisateurs et leurs rôles.
+**mdwriter** est une application web légère de gestion et d’édition de documents Markdown. Elle permet aux utilisateurs de créer, éditer, exporter et gérer leurs projets Markdown depuis un navigateur. L’application intègre également un système d’administration pour gérer les utilisateurs, leurs rôles et certaines actions sur les projets.
 
 ---
 
@@ -21,17 +21,20 @@
 - **Gestion de comptes utilisateurs**
   - Inscription et connexion
   - Attribution d’un rôle (`user` ou `admin`)
-  - Administration centralisée (ajout, suppression, modification de rôle)
+  - Administration centralisée : ajout, suppression, modification de rôle
+  - Actions indisponibles clairement signalées (boutons désactivés avec explications)
 
 - **Éditeur Markdown**
   - Syntaxe complète avec aperçu en temps réel
   - Support des titres, listes, tableaux, images, liens, blockquotes et blocs de code
   - Aide intégrée sous forme de modale
+  - Sauvegarde automatique des modifications
 
 - **Gestion de projets**
   - Création, édition et suppression de projets Markdown
   - Organisation par utilisateur
-  - Sauvegarde automatique des documents
+  - Actions sécurisées pour empêcher la modification des projets d’autres utilisateurs
+  - Indications claires lorsque certaines actions ne sont pas disponibles (ex. suppression ou modification de son propre compte)
 
 - **Export**
   - Export des documents au format Markdown, JSON ou HTML
@@ -40,47 +43,56 @@
 - **Interface responsive**
   - Adaptée aux écrans mobiles et desktop
   - Navigation simple et intuitive
+  - Boutons interactifs pour les actions disponibles, désactivés et accessibles uniquement si autorisé
 
 ---
 
 ## Architecture
 
-## Architecture
-
 / mdwriter/
 
+- inc/                     Fichiers PHP backend
+  - .htaccess
+  - auth.php
+  - exports.php
+  - parsedown.php
+  - projects.php      
+- logs/
+  - .htaccess
+  - auth.log
 - public/
+  - dashboard.php
+  - delete_project.php
+  - download.php
+  - editor.php
+  - get_auth_log.php
+  - images.php
+  - import_project.php
   - index.php
   - login.php
-  - register.php
-  - dashboard.php
-  - editor.php
-  - download.php
   - logout.php
+  - register.php
   - api/
     - projects.php
+    - upload_image.php
   - assets/
     - css/
       - style.css
       - simplemde.min.css
     - js/
       - app.js
-      - simplemde.min.js
-      - jspdf.umd.min.js
       - html2canvas.min.js
-- inc/                     Fichiers PHP backend
-  - .htaccess
-  - auth.php
-  - projects.php
-  - exports.php
-  - parsedown.php
+      - html2pdf.bundle.min.js
+      - marked.js
+      - simplemde.min.js
+  - images
+    - .htaccess
+  - templates
+    - template1.json
 - storage/
   - users/
     - .htaccess
-    - users.json           
-- logs/
-  - .htaccess
-  - auth.log       
+    - users.json
 
 ---
 
@@ -99,7 +111,7 @@ git clone https://github.com/votre-utilisateur/mdwriter.git
  * public/uploads/
 
 Configuration
-  * .htaccess protège les dossiers sensibles (inc/, storage/).
+  * .htaccess protège les dossiers sensibles (inc/, storage/, tmp/, logs/).
   * Les utilisateurs sont stockés dans storage/users/users.json.
   * Les logs d’erreurs sont enregistrés dans logs/errors.log.
 
@@ -112,10 +124,17 @@ Utilisation
      - Exporter en PDF, Markdown ou HTML
   4. Pour un administrateur :
      - Gérer les utilisateurs (ajouter, supprimer, modifier le rôle)
-     - Supprimer un utilisateur supprime également ses données (storage/users/<username>)
+     - Supprimer un utilisateur supprime également ses données (storage/users/<username> et public/images/<username>)
+     - Les actions indisponibles sont indiquées par des boutons désactivés avec message explicatif
 
 Sécurité
   - Les dossiers sensibles (inc/, storage/) sont protégés par .htaccess.
   - Les mots de passe sont stockés hachés avec password_hash().
   - Les endpoints AJAX sont accessibles uniquement pour les utilisateurs connectés.
   - Les utilisateurs ne peuvent accéder qu’à leurs propres projets.
+  - Les actions critiques sont confirmées via modale ou message de confirmation.
+
+---
+
+Licence
+  MIT License
