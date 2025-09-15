@@ -273,27 +273,26 @@ li a {
     color: #fff;
 }
 
-/* Tous les boutons ont exactement la même base visuelle */
+/* Tous les boutons du dashboard-actions ont la même hauteur et largeur */
 .dashboard-actions a.btn,
 .dashboard-actions label.btn,
 .dashboard-actions button.btn {
-    appearance: none;         /* supprime les styles natifs */
-    -webkit-appearance: none;
-    -moz-appearance: none;
-    display: inline-block;
-    padding: 10px 20px;
-    margin: 5px;
-    min-width: 160px;         /* largeur homogène */
-    text-align: center;
-    background-color: #4CAF50;
-    color: #fff;
+    display: inline-flex;       /* flex pour alignement vertical */
+    align-items: center;        /* centrage vertical */
+    justify-content: center;    /* centrage horizontal */
+    padding: 10px 20px;         /* même padding pour tous */
+    min-width: 160px;           /* largeur identique */
+    height: 46px;               /* fixe pour uniformité */
+    box-sizing: border-box;
     font-size: 14px;
     font-weight: bold;
-    border: none;
+    line-height: 1.2;           /* normalise la ligne */
+    text-align: center;
+    vertical-align: middle;
     border-radius: 5px;
-    text-decoration: none;
+    border: none;
     cursor: pointer;
-    box-sizing: border-box;
+    text-decoration: none;
 }
 
 /* Hover identique */
@@ -312,6 +311,15 @@ li a {
 .dashboard-actions .btn-log { background-color: #9C27B0; }
 .dashboard-actions .btn-log:hover { background-color: #7B1FA2; }
 
+.dashboard-actions .btn-password {
+    background-color: #9c27b0 !important;
+    color: #fff;
+}
+
+.dashboard-actions .btn-password:hover {
+    background-color: #7b1fa2 !important;
+}
+
 /* Bouton Déconnexion : neutre (gris) - doit passer après la règle générale */
 .dashboard-actions a.btn-logout,
 .dashboard-actions label.btn-logout,
@@ -323,4 +331,156 @@ li a {
 .dashboard-actions label.btn-logout:hover,
 .dashboard-actions button.btn-logout:hover {
     background-color: #616161;
+}
+
+/* Sauvegarder (vert) */
+.btn-save {
+    background-color: #28a745;
+    color: white;
+}
+.btn-save:hover {
+    background-color: #218838;
+}
+
+/* Boutons images (bleu) */
+.btn-image {
+    background-color: #007bff;
+    color: white;
+}
+.btn-image:hover {
+    background-color: #0056b3;
+}
+
+/* Retour au dashboard (gris) */
+.btn-neutral {
+    background-color: #6c757d;
+    color: white;
+}
+.btn-neutral:hover {
+    background-color: #5a6268;
+}
+
+/* Message d'erreur */
+.admin-message.error {
+    color: red;
+    margin-top: 10px;
+    font-weight: bold;
+}
+
+/* Message de succès */
+.admin-message.success {
+    color: green;
+    margin-top: 10px;
+    font-weight: bold;
+}
+
+.success-msg {
+    color: green;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+.error-msg {
+    color: red;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+/* Optionnel : pour focus (quand on clique sur le select) */
+table td select:focus {
+    border-color: #2196F3;  /* couleur bleue douce au focus */
+    box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.2);
+}
+
+/* Bouton Supprimer utilisateur */
+.btn-delete {
+    padding: 6px 12px;
+    height: 36px;
+    line-height: 1.2;
+    border: none;
+    border-radius: 5px;
+    background-color: #f44336; /* rouge */
+    color: #fff;
+    cursor: pointer;
+    font-weight: bold;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    outline: none;           /* supprime le focus outline */
+    box-shadow: none;        /* supprime tout shadow par défaut */
+    -webkit-appearance: none; /* supprime style natif WebKit */
+    -moz-appearance: none;    /* supprime style natif Firefox */
+    appearance: none;         /* supprime style natif général */
+    background-clip: padding-box; /* élimine liseré interne */
+}
+
+.btn-delete:hover {
+    background-color: #d32f2f;
+}
+
+/* Bouton Changer mot de passe utilisateur */
+.btn-change-user-password {
+    padding: 6px 12px;
+    height: 36px;
+    line-height: 1.2;
+    border: none;
+    border-radius: 5px;
+    background-color: #2196F3; /* bleu */
+    color: #fff;
+    cursor: pointer;
+    font-weight: bold;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+	outline: none;      /* supprime le focus outline */
+    box-shadow: none;   /* supprime tout shadow par défaut */
+}
+
+.btn-change-user-password:hover {
+    background-color: #1976D2;
+}
+
+/* Table admin uniforme */
+.admin-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.admin-table th,
+.admin-table td {
+    border: 1px solid #aaa;
+    padding: 5px 10px; /* remplace cellpadding */
+}
+
+.admin-table td select {
+    width: 100%;
+    margin: 0;
+    padding: 6px 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    outline: none;
+    box-shadow: none;
+    appearance: none;
+    background-clip: padding-box;
+    cursor: pointer;
+}
+
+.admin-table td form {
+    display: inline-block; /* ou flex */
+    margin: 0;
+    padding: 0;
+    border: none;
+    background: none; /* supprime tout fond blanc */
+}
+
+.admin-table td form button.btn-delete {
+    margin: 0;
+    padding: 6px 12px;
+    border: none;
+    outline: none;
+    box-shadow: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background-clip: padding-box;
 }
