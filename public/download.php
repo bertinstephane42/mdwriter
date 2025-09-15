@@ -18,61 +18,229 @@ if (!$project) {
     exit("Projet introuvable");
 }
 
-// Générer le contenu selon le format
 switch ($format) {
     case 'md':
         $content = $project['markdown'] ?? '';
         $filename = ($project['title'] ?? 'rapport') . '.md';
         $mime = 'text/markdown';
-        break;
 
-    case 'html':
-        $Parsedown = new Parsedown();
-        $htmlContent = $Parsedown->text($project['markdown'] ?? '');
+        // Headers + sortie directe
+        header('Content-Description: File Transfer');
+        header('Content-Type: ' . $mime);
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('Expires: 0');
+        header('Cache-Control: must-revalidate');
+        header('Pragma: public');
+        header('Content-Length: ' . strlen($content));
+        echo $content;
+        exit;
 
-        // HTML complet avec style léger
-        $content = "<!DOCTYPE html>
-<html lang='fr'>
-<head>
-<meta charset='UTF-8'>
-<title>" . htmlspecialchars($project['title'] ?? 'Rapport') . "</title>
-<style>
-body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; }
-h1,h2,h3,h4,h5,h6 { color: #333; }
-pre { background: #f4f4f4; padding: 10px; border-radius: 5px; overflow-x: auto; }
-code { background: #eee; padding: 2px 4px; border-radius: 3px; }
-ul, ol { margin-left: 20px; }
-blockquote { border-left: 4px solid #ccc; padding-left: 10px; color: #666; margin: 10px 0; }
-</style>
-</head>
-<body>
-$htmlContent
-</body>
-</html>";
+	case 'html':
+		$Parsedown = new Parsedown();
+		$htmlContent = $Parsedown->text($project['markdown'] ?? '');
 
-        $filename = ($project['title'] ?? 'rapport') . '.html';
-        $mime = 'text/html';
-        break;
+		// HTML complet initial
+		$html = "<!DOCTYPE html>
+		<html lang='fr'>
+		<head>
+		<meta charset='UTF-8'>
+		<title>" . htmlspecialchars($project['title'] ?? 'Rapport') . "</title>
+		<style>
+		body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; }
+		h1,h2,h3,h4,h5,h6 { color: #333; }
+		pre { background: #f4f4f4; padding: 10px; border-radius: 5px; overflow-x: auto; }
+		code { background: #eee; padding: 2px 4px; border-radius: 3px; }
+		ul, ol { margin-left: 20px; }
+		blockquote { border-left: 4px solid #ccc; padding-left: 10px; color: #666; margin: 10px 0; }
+		</style>
+		</head>
+		<body>
+		$htmlContent
+		</body>
+		</html>";
+
+		// Création d’un dossier ../tmp protégé par .htaccess
+		$tmpRoot = realpath(__DIR__ . '/../tmp');
+		if (!$tmpRoot) {
+			$tmpRoot = __DIR__ . '/../tmp';
+			mkdir($tmpRoot, 0777, true);
+		}
+
+		// Ajouter un .htaccess pour interdire l'accès web
+		$htaccess = $tmpRoot . '/.htaccess';
+		if (!file_exists($htaccess)) {
+			file_put_contents($htaccess, "Deny from all\n");
+		}
+
+		// Créer un sous-dossier unique pour cet export
+		$tmpDir = $tmpRoot . "/export_" . uniqid();
+		mkdir($tmpDir, 0777, true);
+		$imagesDir = $tmpDir . "/images";
+		mkdir($imagesDir, 0777, true);
+
+		// Utilisation de DOMDocument pour gérer les images
+		$dom = new DOMDocument();
+		libxml_use_internal_errors(true);
+		$dom->loadHTML($html, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+		libxml_clear_errors();
+
+		$images = $dom->getElementsByTagName('img');
+		foreach ($images as $img) {
+			$src = $img->getAttribute('src');
+
+			// Debug (à retirer ensuite)
+			// error_log("SRC détecté : " . $src);
+
+			// Reconnaître les URL absolues vers /public/images/<user>/<fichier>
+			if (preg_match('~https?://[^/]+/mdwriter/public/images/([^/]+)/([^/?]+)$~', $src, $m)) {
+				$user = $m[1];
+				$basename = $m[2];
+
+				$absolutePath = __DIR__ . "/../public/images/$user/$basename";
+
+				if (file_exists($absolutePath)) {
+					// Copier l'image dans le dossier temporaire
+					copy($absolutePath, $imagesDir . "/" . $basename);
+
+					// Modifier le src pour pointer vers le dossier images/ du zip
+					$img->setAttribute('src', 'images/' . $basename);
+				}
+			}
+		}
+
+		// Sauvegarder le HTML modifié
+		$html = $dom->saveHTML();
+		$htmlFile = "$tmpDir/rapport.html";
+		file_put_contents($htmlFile, $html);
+
+		// Création du ZIP
+		$zipPath = $tmpRoot . "/export_" . uniqid() . ".zip";
+		$zip = new ZipArchive();
+		if ($zip->open($zipPath, ZipArchive::CREATE) === TRUE) {
+			// Ajouter le HTML
+			$zip->addFile($htmlFile, "rapport.html");
+
+			// Ajouter les images
+			$files = new RecursiveIteratorIterator(
+				new RecursiveDirectoryIterator($imagesDir, FilesystemIterator::SKIP_DOTS),
+				RecursiveIteratorIterator::LEAVES_ONLY
+			);
+
+			foreach ($files as $file) {
+				if ($file->isFile()) {
+					$filePath = $file->getRealPath();
+					$relPath = 'images/' . $file->getBasename();
+					$zip->addFile($filePath, $relPath);
+				}
+			}
+
+			$zip->close();
+
+			// Téléchargement du ZIP
+			$filename = preg_replace('/[<>:"\/\\\\|?*]+/', '_', $project['title'] ?? 'rapport') . '.zip';
+			header('Content-Type: application/zip');
+			header('Content-Disposition: attachment; filename="' . $filename . '"');
+			header('Content-Length: ' . filesize($zipPath));
+			readfile($zipPath);
+
+			// Nettoyage du zip
+			unlink($zipPath);
+
+			// Nettoyage du sous-dossier export
+			array_map('unlink', glob("$imagesDir/*.*"));
+			rmdir($imagesDir);
+			unlink($htmlFile);
+			rmdir($tmpDir);
+
+			// Nettoyage de tous les autres anciens sous-dossiers de ../tmp (sécu)
+			foreach (glob($tmpRoot . "/export_*") as $old) {
+				if (is_dir($old)) {
+					array_map('unlink', glob("$old/*.*"));
+					@rmdir($old);
+				}
+			}
+
+			exit;
+		} else {
+			exit("Impossible de créer l’archive ZIP");
+		}
+	break;
+
+	case 'htmlraw':
+		$Parsedown = new Parsedown();
+		$htmlContent = $Parsedown->text($project['markdown'] ?? '');
+
+		// Charger HTML dans DOMDocument pour gérer les images
+		$dom = new DOMDocument();
+		libxml_use_internal_errors(true);
+		$dom->loadHTML($htmlContent, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+		libxml_clear_errors();
+
+		// Parcourir toutes les images et les convertir en base64
+		$images = $dom->getElementsByTagName('img');
+		foreach ($images as $img) {
+			$src = $img->getAttribute('src');
+
+			// Adapter le chemin selon votre structure de fichiers
+			if (preg_match('~/public/images/([^/]+)/([^/?]+)$~', $src, $m)) {
+				$absolutePath = __DIR__ . "/../public/images/{$m[1]}/{$m[2]}";
+				if (file_exists($absolutePath)) {
+					$type = pathinfo($absolutePath, PATHINFO_EXTENSION);
+					$data = file_get_contents($absolutePath);
+					$base64 = 'data:image/' . $type . ';base64,' . base64_encode($data);
+					$img->setAttribute('src', $base64);
+				}
+			}
+		}
+
+		// Recomposer le HTML complet
+		$htmlContent = $dom->saveHTML();
+
+		$content = "<!DOCTYPE html>
+	<html lang='fr'>
+	<head>
+	<meta charset='UTF-8'>
+	<title>" . htmlspecialchars($project['title'] ?? 'Rapport') . "</title>
+	<style>
+	body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; }
+	h1,h2,h3,h4,h5,h6 { color: #333; }
+	pre { background: #f4f4f4; padding: 10px; border-radius: 5px; overflow-x: auto; }
+	code { background: #eee; padding: 2px 4px; border-radius: 3px; }
+	ul, ol { margin-left: 20px; }
+	blockquote { border-left: 4px solid #ccc; padding-left: 10px; color: #666; margin: 10px 0; }
+	img { max-width: 100%; height: auto; }
+	</style>
+	</head>
+	<body>
+	$htmlContent
+	</body>
+	</html>";
+
+		$filename = preg_replace('/[<>:"\/\\\\|?*]+/', '_', $project['title'] ?? 'rapport') . '.html';
+		$mime = 'text/html';
+
+		header('Content-Description: File Transfer');
+		header('Content-Type: ' . $mime);
+		header('Content-Disposition: inline; filename="' . $filename . '"');
+		echo $content;
+		exit;
 
     case 'json':
         $content = json_encode($project, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
         $filename = ($project['title'] ?? 'rapport') . '.json';
         $mime = 'application/json';
-        break;
+
+        header('Content-Description: File Transfer');
+        header('Content-Type: ' . $mime);
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('Expires: 0');
+        header('Cache-Control: must-revalidate');
+        header('Pragma: public');
+        header('Content-Length: ' . strlen($content));
+        echo $content;
+        exit;
 
     default:
         http_response_code(400);
         exit("Format inconnu");
 }
-
-// Headers pour téléchargement
-header('Content-Description: File Transfer');
-header('Content-Type: ' . $mime);
-header('Content-Disposition: attachment; filename="' . $filename . '"');
-header('Expires: 0');
-header('Cache-Control: must-revalidate');
-header('Pragma: public');
-header('Content-Length: ' . strlen($content));
-
-echo $content;
-exit;

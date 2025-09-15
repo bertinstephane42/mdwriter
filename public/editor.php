@@ -2,12 +2,15 @@
 session_start();
 if (!isset($_SESSION['user'])) { header("Location: login.php"); exit; }
 require_once __DIR__ . '/../inc/projects.php';
-
+$projectId = $_GET['id'] ?? null;
 $project = null;
-$projectId = null;
-if (isset($_GET['id'])) {
-    $projectId = $_GET['id'];
-    $project = loadProject($projectId);
+
+if ($projectId) {
+    try {
+        $project = loadProject($projectId);
+    } catch (Exception $e) {
+        die("Erreur lors du chargement du projet : " . htmlspecialchars($e->getMessage()));
+    }
 }
 ?>
 <!DOCTYPE html>
@@ -27,12 +30,36 @@ if (isset($_GET['id'])) {
     <input type="hidden" name="id" value="<?= htmlspecialchars($projectId ?? '') ?>">
     <input type="text" name="title" placeholder="Titre" value="<?= htmlspecialchars($project['title'] ?? '') ?>"><br>
     <textarea id="editor" name="markdown"><?= htmlspecialchars($project['markdown'] ?? '') ?></textarea><br>
-    <button type="submit" name="action" value="save">💾 Sauvegarder</button>
+
+    <!-- Bouton Sauvegarder -->
+    <button type="submit" name="action" value="save" class="btn btn-save">💾 Sauvegarder</button>
+
     <p>
-        <button type="button" id="backDashboardBtn">🏠 Retour au dashboard</button>
+        <!-- Boutons images -->
+        <button type="button" id="addImageBtn" class="btn btn-image">🖼️ Ajouter une image</button>
+        <button type="button" id="browseGalleryBtn" class="btn btn-image">🗂️ Naviguer dans la galerie</button>
+    </p>
+
+    <p>
+        <!-- Bouton retour -->
+        <button type="button" id="backDashboardBtn" class="btn btn-neutral">🏠 Retour au dashboard</button>
     </p>
 </form>
+
 <div id="saveMessage" style="color:green; margin-top:5px;"></div>
+
+<!-- Modale Upload Image -->
+<div id="uploadModal" class="modal" style="display:none;">
+  <div class="modal-content" style="max-width:400px; padding:20px; background:#fff;">
+    <span class="close-upload" style="cursor:pointer;float:right;font-size:1.5em;">&times;</span>
+    <h3>Uploader une image</h3>
+    <form id="uploadForm">
+      <input type="file" name="image" accept="image/*" required>
+      <button type="submit">📤 Envoyer</button>
+    </form>
+    <p id="uploadResult" style="margin-top:10px;"></p>
+  </div>
+</div>
 
 <!-- Modale d'aide Markdown -->
 <div id="helpModal" class="modal">
@@ -107,11 +134,18 @@ echo "$exemple"
 
 <script>
 document.addEventListener("DOMContentLoaded", function() {
-    const projectId = "<?= $projectId ?? '' ?>";
+    const projectId = "<?= $projectId ?? 'new' ?>"; // toujours définir un fallback
+	const textarea = document.getElementById("editor");
+    // --- Charger le contenu serveur directement avec json_encode pour échapper correctement ---
+    textarea.value = <?= json_encode($project['markdown'] ?? '') ?>;
+	// --- Nettoyage autosave si le projet existe côté serveur ---
+	const autosaveKey = "mdwriter_autosave_" + projectId;
+	if (localStorage.getItem(autosaveKey)) {
+		localStorage.removeItem(autosaveKey);
+	}
 	let simplemde = new SimpleMDE({
 		element: document.getElementById("editor"),
 		spellChecker: false,
-		autosave: { enabled: true, uniqueId: "mdwriter_autosave", delay: 1000 },
 		status: false,
 		toolbar: [
 			{ name: "bold", action: SimpleMDE.toggleBold, className: "fa fa-bold", title: "Gras" },
@@ -142,7 +176,46 @@ document.addEventListener("DOMContentLoaded", function() {
 			}
 		]
 	});
+	
+	// --- Activer l'autosave après avoir chargé le contenu serveur ---
+	simplemde.autosave = {
+		enabled: true,
+		uniqueId: autosaveKey,
+		delay: 1000
+	};
 
+    // --- Gestion Upload Image ---
+    const uploadModal = document.getElementById("uploadModal");
+    const addImageBtn = document.getElementById("addImageBtn");
+    const closeUpload = document.querySelector(".close-upload");
+    const uploadForm = document.getElementById("uploadForm");
+    const uploadResult = document.getElementById("uploadResult");
+
+    addImageBtn.addEventListener("click", () => uploadModal.style.display = "block");
+    closeUpload.addEventListener("click", () => uploadModal.style.display = "none");
+
+    uploadForm.addEventListener("submit", function(e){
+        e.preventDefault();
+        const formData = new FormData(uploadForm);
+        fetch("api/upload_image.php", {
+            method: "POST",
+            body: formData
+        })
+        .then(r => r.json())
+        .then(data => {
+            if(data.success){
+                uploadResult.innerHTML = `✅ Upload réussi !<br>URL : <code>${data.url}</code>`;
+                // insertion automatique dans l'éditeur
+                simplemde.value(simplemde.value() + `\n![](${data.url})\n`);
+            } else {
+                uploadResult.textContent = "❌ Erreur : " + data.error;
+            }
+        })
+        .catch(err => {
+            uploadResult.textContent = "❌ Erreur réseau";
+            console.error(err);
+        });
+    });
 
     // Si c'est un nouveau projet, vider explicitement le contenu
     if (!projectId) {
@@ -213,6 +286,12 @@ document.addEventListener("DOMContentLoaded", function() {
 
         window.location.href = "dashboard.php";
     });
+	
+	// --- Bouton Naviguer dans la galerie ---
+	const browseGalleryBtn = document.getElementById("browseGalleryBtn");
+	browseGalleryBtn.addEventListener("click", () => {
+		window.open("images.php", "_blank");
+	});
 
     // Modale d'aide
     const modal = document.getElementById("helpModal");

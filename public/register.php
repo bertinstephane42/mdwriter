@@ -4,11 +4,12 @@ require_once __DIR__ . '/../inc/auth.php';
 
 $error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (register($_POST['username'], $_POST['password'])) {
+    $result = register($_POST['username'], $_POST['password']);
+    if ($result['success']) {
         header("Location: login.php");
         exit;
     } else {
-        $error = "Nom d'utilisateur déjà pris.";
+        $error = $result['error'];
     }
 }
 ?>
@@ -104,5 +105,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 </style>
+<script>
+    // Masquer le message d'erreur après 5 secondes
+    window.addEventListener('DOMContentLoaded', (event) => {
+        const errorMsg = document.querySelector('.error-msg');
+        if (errorMsg) {
+            setTimeout(() => {
+                errorMsg.style.transition = "opacity 0.5s ease";
+                errorMsg.style.opacity = "0";
+                setTimeout(() => errorMsg.remove(), 500); // supprime complètement l'élément
+            }, 5000);
+        }
+    });
+</script>
 </body>
 </html>
