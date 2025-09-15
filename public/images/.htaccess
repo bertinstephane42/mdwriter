@@ -1,0 +1,34 @@
+# --- Sécurité : désactiver PHP ---
+RemoveHandler .php .phtml .php3 .php4 .php5 .php7 .php8
+RemoveType .php .phtml .php3 .php4 .php5 .php7 .php8
+
+# --- Bloquer tout par défaut ---
+<FilesMatch ".*">
+    Require all denied
+</FilesMatch>
+
+# --- Autoriser uniquement certains types d'images ---
+<FilesMatch "\.(jpg|jpeg|png|gif|webp)$">
+    Require all granted
+</FilesMatch>
+
+# --- Empêcher l'indexation du dossier ---
+Options -Indexes
+
+# --- Optimisation : mise en cache navigateur ---
+<IfModule mod_expires.c>
+    ExpiresActive On
+
+    # Cache de 30 jours pour les images
+    ExpiresByType image/jpeg "access plus 30 days"
+    ExpiresByType image/png  "access plus 30 days"
+    ExpiresByType image/gif  "access plus 30 days"
+    ExpiresByType image/webp "access plus 30 days"
+</IfModule>
+
+<IfModule mod_headers.c>
+    # Cache-Control pour forcer le navigateur à conserver les images
+    <FilesMatch "\.(jpg|jpeg|png|gif|webp)$">
+        Header set Cache-Control "public, max-age=2592000"
+    </FilesMatch>
+</IfModule>
