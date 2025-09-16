@@ -180,9 +180,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST'
     <meta charset="UTF-8">
     <title>Tableau de bord</title>
     <link rel="stylesheet" href="assets/css/style.css">
-	<script src="assets/js/simplemde.min.js"></script>
     <script src="assets/js/html2canvas.min.js"></script>
-	<script src="assets/js/html2pdf.bundle.min.js"></script>
+	<script src="assets/js/pdfmake.min.js"></script>
+	<script src="assets/js/vfs_fonts.js"></script>
 </head>
 <body>
 <div class="dashboard-container">
@@ -512,147 +512,192 @@ if (adminMsg) {
     }, 8000); // 8 secondes
 }
 
+async function htmlToPdfMake(html) {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, "text/html");
+
+    async function parseNode(node) {
+        if (node.nodeType === 3) {
+            return node.textContent.trim();
+        }
+        if (node.nodeType !== 1) return null;
+
+        switch (node.tagName.toLowerCase()) {
+            case "h1":
+                return { text: node.textContent.trim(), style: "h1" };
+            case "h2":
+                return { text: node.textContent.trim(), style: "h2" };
+            case "h3":
+                return { text: node.textContent.trim(), style: "h3" };
+
+            case "p":
+                // 🔧 Correction : traiter récursivement les enfants (texte + images)
+                const pChildren = (await Promise.all(Array.from(node.childNodes).map(parseNode))).filter(Boolean);
+                if (pChildren.length === 1 && typeof pChildren[0] === "string") {
+                    return { text: pChildren[0], margin: [0, 5, 0, 5] };
+                }
+                return pChildren; // conserve images et autres contenus dans le paragraphe
+
+            case "ul":
+                return { ul: await Promise.all(Array.from(node.children).map(parseNode)) };
+            case "ol":
+                return { ol: await Promise.all(Array.from(node.children).map(parseNode)) };
+            case "li":
+                return node.textContent.trim();
+
+            case "img":
+                // ✅ Image en base64 déjà intégrée
+                if (node.src.startsWith("data:image")) {
+                    const cleanSrc = node.src.replace(/\s+/g, '');
+                    //console.log("Image détectée pour PDF:", cleanSrc.substring(0, 80) + "...");
+                    return {
+                        image: cleanSrc,
+                        width: 400,
+                        margin: [0, 5, 0, 10]
+                    };
+                }
+
+                // ✅ Fallback : charger l'image externe via canvas
+                return new Promise((resolve) => {
+                    const img = new Image();
+                    img.crossOrigin = "anonymous";
+                    img.onload = () => {
+                        const canvas = document.createElement("canvas");
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                        const ctx = canvas.getContext("2d");
+                        ctx.drawImage(img, 0, 0);
+                        resolve({
+                            image: canvas.toDataURL("image/png"),
+                            width: Math.min(400, img.width),
+                            margin: [0, 5, 0, 10]
+                        });
+                    };
+                    img.onerror = () => {
+                        console.warn("Image introuvable ou inaccessible :", node.src);
+                        resolve(null);
+                    };
+                    img.src = node.src;
+                });
+
+            case "table":
+                const rows = Array.from(node.querySelectorAll("tr")).map(tr =>
+                    Array.from(tr.querySelectorAll("td,th")).map(td => td.textContent.trim())
+                );
+                return { table: { body: rows }, margin: [0, 5, 0, 10] };
+
+			case "blockquote":
+				const quoteChildren = (await Promise.all(Array.from(node.childNodes).map(parseNode))).filter(Boolean);
+				return {
+					stack: quoteChildren,
+					italics: true,
+					margin: [10, 5, 0, 5],
+					color: "#555555",
+					decoration: "underline"
+				};
+
+			case "pre":
+				return {
+					text: node.textContent.trim(),
+					style: "codeBlock",
+					margin: [0, 5, 0, 5]
+				};
+
+			case "code":
+				return {
+					text: node.textContent.trim(),
+					style: "inlineCode"
+				};
+
+            default:
+                return (await Promise.all(Array.from(node.childNodes).map(parseNode))).filter(Boolean);
+        }
+    }
+
+    const content = (await Promise.all(
+        Array.from(doc.body.childNodes).map(parseNode)
+    )).flat().filter(Boolean);
+
+    return {
+		content,
+		styles: {
+			h1: { fontSize: 18, bold: true, margin: [0, 10, 0, 5] },
+			h2: { fontSize: 16, bold: true, margin: [0, 8, 0, 4] },
+			h3: { fontSize: 14, bold: true, margin: [0, 6, 0, 3] },
+			blockquote: {
+				italics: true,
+				margin: [10, 5, 0, 5],
+				color: "#555555",
+				decoration: "underline"
+			},
+			codeBlock: {
+				fontSize: 10,
+				fontFamily: "Courier",
+				color: "#333333",
+				fillColor: "#f5f5f5",
+				margin: [0, 5, 0, 5]
+			},
+			inlineCode: {
+				fontSize: 10,
+				fontFamily: "Courier",
+				color: "#d6336c",
+				background: "#f0f0f0"
+			}
+		},
+		footer: (currentPage, pageCount) => ({
+			text: `Page ${currentPage} / ${pageCount}`,
+			alignment: "center",
+			fontSize: 9,
+			margin: [0, 5, 0, 0]
+		})
+	};
+}
+
 async function exportProjectPDF(projectId) {
     try {
-        // 1️⃣ Récupérer le HTML complet du projet
+        // récupérer le HTML
         const res = await fetch(`download.php?id=${encodeURIComponent(projectId)}&format=htmlraw`, { credentials: 'same-origin' });
         if (!res.ok) throw new Error(`Erreur réseau : ${res.status}`);
-        const htmlContent = await res.text();
 
-        // 2️⃣ Parser la réponse
+        const buffer = await res.arrayBuffer();
+        const decoder = new TextDecoder("utf-8");
+        let htmlContent = decoder.decode(buffer);
+
+        //console.log("HTML reçu pour PDF :", htmlContent.substring(0, 500));
+
+        // Parser le HTML et convertir toutes les <img> en dataURL normalisé
         const parser = new DOMParser();
         const doc = parser.parseFromString(htmlContent, "text/html");
+        const imgs = doc.querySelectorAll("img");
 
-        // 3️⃣ Extraire le titre (h1 en général dans ton rapport HTML)
-        let title = doc.querySelector("h1")?.textContent?.trim() || "rapport";
-        // Nettoyage du titre pour en faire un nom de fichier valide
-        title = title.replace(/[<>:"/\\|?*]+/g, "_");
-
-        // 4️⃣ Ajouter des styles PDF-friendly
-        const pdfStyles = `
-            <style>
-                /* Amélioration des citations */
-                blockquote {
-                    border-left: 4px solid #ccc;
-                    background: #f9f9f9;
-                    padding: 10px 15px;
-                    margin: 12px 0;
-                    font-style: italic;
-                    page-break-inside: avoid;
-                }
-
-                /* Code et préformaté */
-                pre, code {
-                    background: #f4f4f4;
-                    padding: 8px 10px;
-                    border-radius: 4px;
-                    display: block;
-                    font-family: monospace;
-                    overflow-x: auto;
-                    page-break-inside: avoid;
-                }
-
-                /* Tableaux */
-                table {
-                    border-collapse: collapse;
-                    width: 100%;
-                    margin: 12px 0;
-                    page-break-inside: avoid;
-                }
-                th, td {
-                    border: 1px solid #ccc;
-                    padding: 6px;
-                    text-align: left;
-                }
-
-                /* Images */
-                img {
-                    max-width: 100%;
-                    height: auto;
-                    page-break-inside: avoid;
-                }
-
-                /* Titres */
-                h1, h2, h3, h4 {
-                    page-break-after: avoid;
-                }
-
-                /* Sauts de page forcés */
-                .page-break {
-                    page-break-before: always;
-                }
-            </style>
-        `;
-
-        // 5️⃣ Construire le HTML complet
-        const fullHTML = `
-            <html>
-                <head>
-                    ${document.head.innerHTML}
-                    ${pdfStyles}
-                </head>
-                <body>
-                    ${doc.body.innerHTML}
-                </body>
-            </html>
-        `;
-
-        // Créer un DOM temporaire pour forcer le chargement des images
-        const tempContainer = document.createElement("div");
-        tempContainer.style.display = "none";
-        tempContainer.innerHTML = fullHTML;
-        document.body.appendChild(tempContainer);
-
-        // ⚡ Attendre que toutes les images soient bien chargées
-        await Promise.all(
-            Array.from(tempContainer.querySelectorAll("img")).map(img => {
-                if (img.complete) return Promise.resolve();
-                return new Promise(resolve => {
-                    img.onload = img.onerror = resolve;
-                });
-            })
-        );
-
-        // 6️⃣ Générer le PDF avec pagination
-        const opt = {
-            margin: 10,
-            filename: `rapport_${title}.pdf`,
-            html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
-            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-        };
-
-        const worker = html2pdf().set(opt).from(fullHTML);
-
-        // Générer le PDF sans l’enregistrer directement
-        const pdf = await worker.toPdf().get('pdf');
-
-        // Récupérer le nombre total de pages
-        const totalPages = pdf.internal.getNumberOfPages();
-
-        // Ajouter un footer (ou header) à chaque page
-        for (let i = 1; i <= totalPages; i++) {
-            pdf.setPage(i);
-            pdf.setFontSize(10);
-            pdf.setTextColor(100);
-            // En pied de page, centré
-            pdf.text(
-                `Page ${i} / ${totalPages}`,
-                pdf.internal.pageSize.getWidth() / 2,
-                pdf.internal.pageSize.getHeight() - 10,
-                { align: 'center' }
-            );
+        for (let img of imgs) {
+            if (img.src.startsWith("data:")) {
+                // Normalisation du format (important pour pdfMake)
+                const normalized = img.src.replace(/\s+/g, '');
+                img.setAttribute("src", normalized);
+            } else {
+                // Si jamais tu avais des URL relatives -> on pourrait les convertir en base64 ici
+                // Mais comme ton image est déjà en data:image/jpeg;base64, pas besoin
+            }
         }
 
-        // Sauvegarder le fichier
-        pdf.save(`rapport_${title}.pdf`);
+        const bodyContent = doc.body.innerHTML;
+
+        // Conversion en docDefinition
+        const docDefinition = await htmlToPdfMake(bodyContent, {
+            imagesByReference: true // OPTIONNEL : pdfMake gère mieux les dataURL avec cette option
+        });
+
+        // Génération du PDF
+        pdfMake.createPdf(docDefinition).download("rapport.pdf");
 
     } catch (err) {
-        console.error('Erreur export PDF', err);
+        console.error("Erreur export PDF", err);
         alert("Erreur lors de la génération du PDF. Vérifie la console.");
     }
 }
 
-// Écoute du clic pour le bouton d'export
+// Écoute du clic
 document.body.addEventListener('click', function(e) {
     const btn = e.target.closest('.btn-export-pdf');
     if (!btn) return;

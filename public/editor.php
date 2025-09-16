@@ -44,9 +44,10 @@ if ($projectId) {
         <!-- Bouton retour -->
         <button type="button" id="backDashboardBtn" class="btn btn-neutral">🏠 Retour au dashboard</button>
     </p>
+	<p>
+	<div id="saveMessage" style="color:green; margin-top:5px;"></div>
+	</p>
 </form>
-
-<div id="saveMessage" style="color:green; margin-top:5px;"></div>
 
 <!-- Modale Upload Image -->
 <div id="uploadModal" class="modal" style="display:none;">
@@ -66,6 +67,16 @@ if ($projectId) {
   <div class="modal-content" style="max-height:80vh; overflow-y:auto;">
     <span class="close" style="cursor:pointer;float:right;font-size:1.5em;">&times;</span>
     <h1 style="text-align:center;">Guide Markdown</h1>
+
+    <h3>Bonnes pratiques</h3>
+    <ul>
+      <li>Structurer le document avec titres et sous-titres.</li>
+      <li>Numéroter les étapes d’une procédure.</li>
+      <li>Inclure des blocs de code pour les commandes ou scripts.</li>
+      <li>Ne pas abuser de la mise en forme ; privilégier la clarté.</li>
+      <li>Exporter régulièrement pour sauvegarder votre travail.</li>
+      <li><strong>Important pour le PDF :</strong> une image doit être **isolée sur une ligne avant et après** pour être détectée correctement lors de la conversion PDF.</li>
+    </ul>
 
     <h3>Mise en forme</h3>
     <pre><code>**gras**
@@ -94,8 +105,17 @@ if ($projectId) {
     <pre><code>> Ceci est une citation.
 > Elle peut s'étendre sur plusieurs lignes !</code></pre>
 
-    <h3>Images &nbsp; <small>Besoin de télécharger une image ? <a href="http://imgur.com/" target="_blank">Imgur</a> propose une interface simple.</small></h3>
-    <pre><code>![](http://www.exemple.com/image.jpg)</code></pre>
+    <h3>Images</h3>
+    <p><small>Besoin de télécharger une image ? <a href="http://imgur.com/" target="_blank">Imgur</a> propose une interface simple.</small></p>
+    <pre><code>![Texte alternatif](http://www.exemple.com/image.jpg)</code></pre>
+    <p><em>⚠️ Pour être détectée dans le PDF, l'image doit être précédée et suivie d'une ligne vide :</em></p>
+    <pre><code>
+Voici un paragraphe.
+
+![Texte alternatif](http://www.exemple.com/image.jpg)
+
+Paragraphe suivant.
+</code></pre>
 
     <h3>Tableaux</h3>
     <pre><code>| Colonne 1 | Colonne 2 | Colonne 3 |
@@ -120,15 +140,6 @@ exemple="bonjour !"
 echo "$exemple"
 &#96;&#96;&#96;bash
 </code></pre>
-
-    <h3>Bonnes pratiques</h3>
-    <ul>
-      <li>Structurer le document avec titres et sous-titres.</li>
-      <li>Numéroter les étapes d’une procédure.</li>
-      <li>Inclure des blocs de code pour les commandes ou scripts.</li>
-      <li>Ne pas abuser de la mise en forme ; privilégier la clarté.</li>
-      <li>Exporter régulièrement pour sauvegarder votre travail.</li>
-    </ul>
   </div>
 </div>
 

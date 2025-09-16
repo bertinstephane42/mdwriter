@@ -173,7 +173,7 @@ switch ($format) {
 		// Charger HTML dans DOMDocument pour gérer les images
 		$dom = new DOMDocument();
 		libxml_use_internal_errors(true);
-		$dom->loadHTML($htmlContent, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+		$dom->loadHTML('<?xml encoding="UTF-8">' . $htmlContent, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
 		libxml_clear_errors();
 
 		// Parcourir toutes les images et les convertir en base64
@@ -181,15 +181,85 @@ switch ($format) {
 		foreach ($images as $img) {
 			$src = $img->getAttribute('src');
 
-			// Adapter le chemin selon votre structure de fichiers
-			if (preg_match('~/public/images/([^/]+)/([^/?]+)$~', $src, $m)) {
+			// Si déjà en base64 -> ignorer
+			if (strpos($src, 'data:image') === 0) {
+				continue;
+			}
+
+			$absolutePath = null;
+			$mime = null;
+			$data = null;
+
+			// Cas 1 : image hébergée sur ton domaine
+			if (preg_match('~^https?://cours-reseaux\.fr/mdwriter/public/images/([^/]+)/([^/?#]+)$~', $src, $m)) {
 				$absolutePath = __DIR__ . "/../public/images/{$m[1]}/{$m[2]}";
-				if (file_exists($absolutePath)) {
-					$type = pathinfo($absolutePath, PATHINFO_EXTENSION);
-					$data = file_get_contents($absolutePath);
-					$base64 = 'data:image/' . $type . ';base64,' . base64_encode($data);
-					$img->setAttribute('src', $base64);
+			}
+			// Cas 2 : chemin relatif interne (/mdwriter/public/images/...)
+			elseif (preg_match('~^/mdwriter/public/images/([^/]+)/([^/?#]+)$~', $src, $m)) {
+				$absolutePath = __DIR__ . "/../public/images/{$m[1]}/{$m[2]}";
+			}
+			// Cas 3 : URL externe complète
+			elseif (preg_match('~^https?://~', $src)) {
+				// Essayer de télécharger l’image distante
+				if (ini_get('allow_url_fopen')) {
+					$data = @file_get_contents($src);
+				} else {
+					// Fallback avec cURL si allow_url_fopen désactivé
+					$ch = curl_init($src);
+					curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+					curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+					$data = curl_exec($ch);
+					curl_close($ch);
 				}
+
+				// Détecter le type MIME de l'image distante
+				if ($data !== false) {
+					$imageInfo = @getimagesizefromstring($data);
+					if ($imageInfo && isset($imageInfo['mime'])) {
+						$mime = $imageInfo['mime'];
+					} else {
+						$mime = 'application/octet-stream';
+					}
+				}
+			}
+
+			// Charger si fichier local
+			if ($absolutePath && file_exists($absolutePath)) {
+				$ext = strtolower(pathinfo($absolutePath, PATHINFO_EXTENSION));
+				switch ($ext) {
+					case 'jpg':
+					case 'jpeg':
+						$mime = 'image/jpeg';
+						break;
+					case 'png':
+						$mime = 'image/png';
+						break;
+					case 'gif':
+						$mime = 'image/gif';
+						break;
+					case 'svg':
+						// Convertir le SVG en PNG avec Imagick si dispo
+						if (extension_loaded('imagick')) {
+							$imagick = new Imagick();
+							$imagick->readImage($absolutePath);
+							$imagick->setImageFormat("png");
+							$mime = 'image/png';
+							$data = $imagick->getImageBlob();
+						} else {
+							// fallback: ignorer l'image si pas de support SVG
+							$data = null;
+						}
+						break;
+					default:
+						$mime = 'application/octet-stream';
+				}
+				$data = file_get_contents($absolutePath);
+			}
+
+			// Si on a bien des données image, remplacer par base64
+			if ($data !== null && $data !== false) {
+				$base64 = 'data:' . $mime . ';base64,' . base64_encode($data);
+				$img->setAttribute('src', $base64);
 			}
 		}
 
@@ -220,7 +290,7 @@ switch ($format) {
 		$mime = 'text/html';
 
 		header('Content-Description: File Transfer');
-		header('Content-Type: ' . $mime);
+		header("Content-Type: $mime; charset=utf-8");
 		header('Content-Disposition: inline; filename="' . $filename . '"');
 		echo $content;
 		exit;
