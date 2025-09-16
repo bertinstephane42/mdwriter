@@ -29,8 +29,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <?php endif; ?>
 
     <form method="post">
-        <input type="text" name="username" placeholder="Nom d'utilisateur" required>
+        <!-- Champ login -->
+        <input type="text" name="username" placeholder="Identifiant" required>
+        <small>
+            Le login doit être au format <strong>initiale du prénom + nom</strong> (ex. : jharrison),  
+            contenir entre <strong>3 et 15 caractères</strong>, uniquement lettres, chiffres ou <code>_</code>.
+        </small>
+
+        <!-- Champ mot de passe -->
         <input type="password" name="password" placeholder="Mot de passe" required>
+        <small>
+            Le mot de passe doit comporter au minimum <strong>10 caractères</strong>, avec au moins :  
+            une majuscule, une minuscule, un chiffre et un caractère spécial (<code>/ . ! + ? = - _ * $</code>).
+        </small>
+
         <input type="submit" value="S'inscrire">
     </form>
 
