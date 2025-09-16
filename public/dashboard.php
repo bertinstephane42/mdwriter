@@ -459,9 +459,21 @@ table th, table td {
 </style>
 
 <script>
-document.querySelectorAll('.deleteLink').forEach(link => {
+document.querySelectorAll('.action-delete').forEach(link => {
     link.addEventListener('click', function(e) {
         if (!confirm("Voulez-vous vraiment supprimer ce projet ? Cette action est irréversible.")) {
+            e.preventDefault();
+        }
+    });
+});
+
+// Confirmation pour toutes les actions utilisateur
+document.querySelectorAll('.action-edit, .action-export, .btn-export-pdf').forEach(link => {
+    link.addEventListener('click', function(e) {
+        const action = this.classList.contains('action-edit') ? "éditer ce projet" :
+                       this.classList.contains('btn-export-pdf') ? "exporter en PDF" :
+                       "exporter ce projet";
+        if (!confirm("Voulez-vous vraiment " + action + " ?")) {
             e.preventDefault();
         }
     });
