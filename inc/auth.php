@@ -73,6 +73,17 @@ function login($username, $password) {
 
 function register($username, $password, $role = 'user') { 
     $users = load_users();
+	 // --- Vérification de la longueur du login ---
+	if (strlen($username) < 3 || strlen($username) > 15) {
+        return ['success' => false, 'error' => "Le nom d'utilisateur doit contenir entre 3 et 15 caractères."];
+    }
+
+    // --- Vérification des caractères autorisés (lettres, chiffres, underscore) ---
+    if (!preg_match('/^[A-Za-z0-9_]+$/', $username)) {
+        return ['success' => false, 'error' => "Le nom d'utilisateur ne peut contenir que des lettres, chiffres et underscores (_)."];
+    }
+	
+	// --- Vérification si le login existe déjà ---
     if (isset($users[$username])) {
         return ['success' => false, 'error' => "Nom d'utilisateur déjà pris."];
     }
