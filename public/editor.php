@@ -77,81 +77,81 @@ if ($project && !empty($project['isTemplate']) && $project['isTemplate'] === tru
 	  </div>
 	</div>
 
-	<!-- Modale d'aide Markdown -->
-	<div id="helpModal" class="modal">
-	  <div class="modal-content" style="max-height:80vh; overflow-y:auto;">
-		<span class="close" style="cursor:pointer;float:right;font-size:1.5em;">&times;</span>
-		<h1 style="text-align:center;">Guide Markdown</h1>
+<!-- Modale d'aide Markdown -->
+<div id="helpModal" class="modal">
+  <div class="modal-content" style="max-height:80vh; overflow-y:auto; padding: 20px; font-family:Arial, sans-serif;">
+    <span class="close" style="cursor:pointer; float:right; font-size:1.5em;">&times;</span>
 
-		<h3>Bonnes pratiques</h3>
-		<ul>
-		  <li>Structurer le document avec titres et sous-titres.</li>
-		  <li>Numéroter les étapes d’une procédure.</li>
-		  <li>Inclure des blocs de code pour les commandes ou scripts.</li>
-		  <li>Ne pas abuser de la mise en forme ; privilégier la clarté.</li>
-		  <li>Exporter régulièrement pour sauvegarder votre travail.</li>
-		  <li><strong>Important pour le PDF :</strong> une image doit être **isolée sur une ligne avant et après** pour être détectée correctement lors de la conversion PDF.</li>
-		</ul>
+    <h1 style="text-align:center; margin-bottom: 20px;">Guide Markdown</h1>
 
-		<h3>Mise en forme</h3>
-		<pre><code>**gras**
-	*italique*
-	~~barré~~</code></pre>
+    <h3>Bonnes pratiques</h3>
+    <ul>
+      <li>Structurer le document avec titres et sous-titres.</li>
+      <li>Numéroter les étapes d’une procédure.</li>
+      <li>Inclure des blocs de code pour les commandes ou scripts.</li>
+      <li>Ne pas abuser de la mise en forme ; privilégier la clarté.</li>
+      <li>Exporter régulièrement pour sauvegarder votre travail.</li>
+      <li><strong>Important pour le PDF :</strong> une image doit être <strong>isolée sur une ligne avant et après</strong> pour être détectée correctement lors de la conversion PDF.</li>
+    </ul>
 
-		<h3>Titres</h3>
-		<pre><code># Gros titre
-	## Titre moyen
-	### Petit titre
-	#### Très petit titre</code></pre>
+    <h3>Mise en forme</h3>
+    <pre><code>**gras**
+*italique*
+~~barré~~</code></pre>
 
-		<h3>Listes</h3>
-		<pre><code>* Élément de liste
-	* Élément de liste
-	* Élément de liste
+    <h3>Titres</h3>
+    <pre><code># Gros titre
+## Titre moyen
+### Petit titre
+#### Très petit titre</code></pre>
 
-	1. Élément numéroté
-	2. Élément numéroté
-	3. Élément numéroté</code></pre>
+    <h3>Listes</h3>
+    <pre><code>* Élément de liste
+* Élément de liste
+* Élément de liste
 
-		<h3>Liens</h3>
-		<pre><code>[Texte du lien](http://www.exemple.com)</code></pre>
+1. Élément numéroté
+2. Élément numéroté
+3. Élément numéroté</code></pre>
 
-		<h3>Blockquotes (citations)</h3>
-		<pre><code>> Ceci est une citation.
-	> Elle peut s'étendre sur plusieurs lignes !</code></pre>
+    <h3>Liens</h3>
+    <pre><code>[Texte du lien](http://www.exemple.com)</code></pre>
 
-		<h3>Images</h3>
-		<p><small>Besoin de télécharger une image ? <a href="http://imgur.com/" target="_blank">Imgur</a> propose une interface simple.</small></p>
-		<pre><code>![Texte alternatif](http://www.exemple.com/image.jpg)</code></pre>
-		<p><em>⚠️ Pour être détectée dans le PDF, l'image doit être précédée et suivie d'une ligne vide :</em></p>
-		<pre><code>
+    <h3>Blockquotes (citations)</h3>
+    <pre><code>> Ceci est une citation.
+> Elle peut s'étendre sur plusieurs lignes !</code></pre>
 
-	Voici un paragraphe.
+    <h3>Images</h3>
+    <p><small>Besoin de télécharger une image ? <a href="http://imgur.com/" target="_blank">Imgur</a> propose une interface simple.</small></p>
+    <pre><code>![Texte alternatif](http://www.exemple.com/image.jpg)</code></pre>
+    <p><em>⚠️ Pour être détectée dans le PDF, l'image doit être précédée et suivie d'une ligne vide :</em></p>
+    <pre><code>
+Voici un paragraphe.
 
-	![Texte alternatif](http://www.exemple.com/image.jpg)
+![Texte alternatif](http://www.exemple.com/image.jpg)
 
-	Paragraphe suivant.
+Paragraphe suivant.
+    </code></pre>
 
-	</code></pre>
+    <h3>Tableaux</h3>
+    <pre><code>| Colonne 1 | Colonne 2 | Colonne 3 |
+| -------- | -------- | -------- |
+| John     | Doe      | Homme    |
+| Mary     | Smith    | Femme    |
+</code></pre>
 
-		<h3>Tableaux</h3>
-		<pre><code>| Colonne 1 | Colonne 2 | Colonne 3 |
-	| -------- | -------- | -------- |
-	| John | Doe | Homme |
-	| Mary | Smith | Femme |
+<h3>Afficher du code</h3>
+<pre><code>`var exemple = "bonjour !";`</code></pre>
 
-		<h3>Afficher du code</h3>
-		<pre><code>`var exemple = "bonjour !";`</code></pre>
-
-		<p><em>Ou sur plusieurs lignes :</em></p>
-		<pre><code>
-	&#96;&#96;&#96;bash
-	exemple="bonjour !"
-	echo "$exemple"
-	&#96;&#96;&#96;
-	</code></pre>
-	  </div>
-	</div>
+<p><em>Ou sur plusieurs lignes :</em></p>
+<pre><code>
+&#96;&#96;&#96;bash
+exemple="bonjour !"
+echo "$exemple"
+&#96;&#96;&#96;
+</code></pre>
+</div>
+</div>
 
 <script>
 document.addEventListener("DOMContentLoaded", function() {
