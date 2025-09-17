@@ -40,7 +40,8 @@ function listProjects(): array {
             'id' => pathinfo($file, PATHINFO_FILENAME),
             'title' => htmlspecialchars($data['title'] ?? pathinfo($file, PATHINFO_FILENAME), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'),
             'date' => $data['date'] ?? date("Y-m-d H:i", filemtime($file)),
-            'markdown' => $data['markdown'] ?? ''
+            'markdown' => $data['markdown'] ?? '',
+			'isTemplate' => !empty($data['isTemplate'])
         ];
     }
 
@@ -52,15 +53,27 @@ function listProjects(): array {
  */
 function saveProject(string $title, string $markdown): string {
     $title = trim($title);
+
+    // Vérification du titre
     if ($title === '') {
         throw new InvalidArgumentException("Le titre est obligatoire.");
+    }
+    if (mb_strlen($title) > 25) {
+        throw new InvalidArgumentException("Le titre ne doit pas dépasser 25 caractères.");
+    }
+
+    // Vérification de la taille du Markdown
+    $markdown = is_string($markdown) ? $markdown : '';
+    $maxLength = 500000; // 500 000 caractères (~0,5 Mo)
+    if (mb_strlen($markdown) > $maxLength) {
+        throw new InvalidArgumentException("Le contenu du projet est trop long. Limite : {$maxLength} caractères.");
     }
 
     $dir = projects_dir();
     $id = uniqid("proj_");
     $data = [
-        'title' => mb_substr($title, 0, 255),
-        'markdown' => is_string($markdown) ? $markdown : '',
+        'title' => $title,
+        'markdown' => $markdown,
         'date' => date("Y-m-d H:i")
     ];
 
@@ -83,13 +96,32 @@ function updateProject(string $id, string $title, string $markdown): void {
         throw new RuntimeException("Le projet $id n'existe pas.");
     }
 
+    $title = trim($title);
+
+    // Vérification du titre
+    if ($title === '') {
+        throw new InvalidArgumentException("Le titre est obligatoire.");
+    }
+    if (mb_strlen($title) > 25) {
+        throw new InvalidArgumentException("Le titre ne doit pas dépasser 25 caractères.");
+    }
+
+    // Vérification de la taille du Markdown
+    $markdown = is_string($markdown) ? $markdown : '';
+    $maxLength = 500000;
+    if (mb_strlen($markdown) > $maxLength) {
+        throw new InvalidArgumentException("Le contenu du projet est trop long. Limite : {$maxLength} caractères.");
+    }
+
     $data = [
-        'title' => mb_substr(trim($title), 0, 255),
-        'markdown' => is_string($markdown) ? $markdown : '',
+        'title' => $title,
+        'markdown' => $markdown,
         'date' => date("Y-m-d H:i")
     ];
 
-    file_put_contents($file, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+    if (file_put_contents($file, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) === false) {
+        throw new RuntimeException("Impossible de mettre à jour le projet.");
+    }
 }
 
 /**
@@ -129,7 +161,7 @@ function deleteProject(string $id): void {
 }
 
 /**
- * Importe un projet (sécurisé)
+ * Importe un projet (sécurisé) avec prise en charge de isTemplate
  */
 function importProject(array $data): string {
     $dir = projects_dir();
@@ -138,22 +170,44 @@ function importProject(array $data): string {
         throw new RuntimeException("Impossible de créer le répertoire projets.");
     }
 
-    $allowedKeys = ['title', 'markdown', 'date'];
+    // Extraction des champs autorisés
+    $allowedKeys = ['title', 'markdown', 'date', 'isTemplate'];
     $projectData = array_intersect_key($data, array_flip($allowedKeys));
 
-    $title = trim($projectData['title'] ?? '');
-    if ($title === '') $title = 'Nouveau projet';
-    $projectData['title'] = mb_substr($title, 0, 255);
+	// --- Validation et adaptation du titre pour clone ---
+	$title = trim($projectData['title'] ?? 'Sans titre');
 
+	// Ajouter "(clone)" uniquement si ce n'est pas déjà présent
+	if (strpos($title, '(clone)') === false) {
+		$title .= " (clone)";
+	}
+
+	// Tronquer le titre pour ne pas dépasser 25 caractères
+	if (mb_strlen($title) > 25) {
+		$title = mb_substr($title, 0, 25);
+	}
+
+	$projectData['title'] = $title;
+
+    // --- Validation du Markdown ---
     $markdown = $projectData['markdown'] ?? '';
     $projectData['markdown'] = is_string($markdown) ? $markdown : '';
+    $maxLength = 500000;
+    if (mb_strlen($projectData['markdown']) > $maxLength) {
+        throw new InvalidArgumentException("Le contenu du projet est trop long. Limite : {$maxLength} caractères.");
+    }
 
+    // --- Validation de la date ---
     $date = $projectData['date'] ?? date("Y-m-d H:i");
     if (!preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/', $date)) {
         $date = date("Y-m-d H:i");
     }
     $projectData['date'] = $date;
 
+    // --- Validation de isTemplate ---
+    $projectData['isTemplate'] = !empty($projectData['isTemplate']);
+
+    // --- Génération ID et sauvegarde ---
     $id = uniqid("proj_");
     $file = "$dir/$id.json";
 
