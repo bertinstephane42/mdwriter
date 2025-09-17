@@ -35,6 +35,7 @@ if (is_admin()) {
 				$adminMessage = "Utilisateur créé avec succès.";
 				$adminMessageType = 'success'; // succès -> vert
 				$users = load_users();
+				log_auth($_SESSION['user'], "Création de l'utilisateur '{$_POST['username']}' avec rôle '{$_POST['role']}'");
 			} else {
 				$adminMessage = $result['error']; // affiche le message d'erreur précis
 				$adminMessageType = 'error'; // erreur -> rouge
@@ -79,41 +80,35 @@ if (is_admin()) {
 			}
 
 			$adminMessage = "Utilisateur et ses répertoires supprimés.";
+			log_auth($_SESSION['user'], "Suppression de l'utilisateur '$usernameToDelete' et de ses répertoires");
 		}
 
 		if ($action === 'change_role' && !empty($_POST['username']) && isset($_POST['role'])) {
 			$username = $_POST['username'];
 			$newRole = $_POST['role'];
 
-			// Vérifier si on tente de rétrograder un admin
-			if ($users[$username]['role'] === 'admin' && $newRole !== 'admin') {
-				// Compter le nombre d'admins existants
-				$adminCount = 0;
-				foreach($users as $u) {
-					if ($u['role'] === 'admin') {
-						$adminCount++;
-					}
-				}
+			$oldRole = $users[$username]['role'] ?? '';
+			$canChange = true;
 
+			if ($oldRole === 'admin' && $newRole !== 'admin') {
+				$adminCount = 0;
+				foreach($users as $u) if ($u['role'] === 'admin') $adminCount++;
 				if ($adminCount <= 1) {
-					// Dernier admin : refuser
 					$adminMessage = "Impossible de rétrograder ce compte, il doit rester au moins un administrateur.";
-					$adminMessageType = 'error'; // erreur
-				} else {
-					// Autoriser le changement
-					$users[$username]['role'] = $newRole;
-					save_users($users);
-					$adminMessage = "Rôle mis à jour.";
-					$adminMessageType = 'success'; // succès -> vert
+					$adminMessageType = 'error';
+					$canChange = false;
 				}
-			} else {
-				// Aucun risque, mettre à jour
+			}
+
+			if ($canChange) {
 				$users[$username]['role'] = $newRole;
 				save_users($users);
 				$adminMessage = "Rôle mis à jour.";
-				$adminMessageType = 'success'; // succès -> vert
+				$adminMessageType = 'success';
+				log_auth($_SESSION['user'], "Changement de rôle de '$username' : '$oldRole' -> '$newRole'");
 			}
 		}
+		
 		if ($action === 'change_password' && !empty($_POST['username'])) {
 			$usernameToChange = $_POST['username'];
 
@@ -136,6 +131,7 @@ if (is_admin()) {
 					save_users($users);
 					$adminMessage = "Mot de passe mis à jour pour " . htmlspecialchars($usernameToChange);
 					$adminMessageType = 'success'; // succès
+					log_auth($_SESSION['user'], "Changement du mot de passe de '$usernameToChange'");
 				}
 			}
 		}  
