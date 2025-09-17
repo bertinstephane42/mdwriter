@@ -78,6 +78,7 @@ if ($project && !empty($project['isTemplate']) && $project['isTemplate'] === tru
 	</div>
 
 <!-- Modale d'aide Markdown -->
+<!-- Modale d'aide Markdown -->
 <div id="helpModal" class="modal">
   <div class="modal-content" style="max-height:80vh; overflow-y:auto; padding: 20px; font-family:Arial, sans-serif;">
     <span class="close" style="cursor:pointer; float:right; font-size:1.5em;">&times;</span>
@@ -99,6 +100,41 @@ if ($project && !empty($project['isTemplate']) && $project['isTemplate'] === tru
 *italique*
 ~~barré~~</code></pre>
 
+    <h3>Sauts de ligne et paragraphes</h3>
+    <p><strong>⚠️ Attention :</strong> le comportement diffère entre l’éditeur (HTML) et l’export PDF.</p>
+    <ul>
+      <li><strong>Dans l’éditeur (HTML) :</strong>  
+        - Un <em>retour à la ligne forcé</em> s’obtient en ajoutant <code>··</code> (deux espaces) à la fin d’une ligne → cela génère un simple saut de ligne (<code>&lt;br&gt;</code>).  
+        - Un <em>nouveau paragraphe</em> s’obtient en laissant une ligne vide.
+      </li>
+      <li><strong>Dans le PDF :</strong>  
+        - Un <em>retour à la ligne forcé</em> (deux espaces en fin de ligne) est interprété comme un <u>nouveau paragraphe</u>.  
+        - Un <em>nouveau paragraphe</em> (ligne vide) reste un nouveau paragraphe.</li>
+    </ul>
+
+    <p><em>Exemple Markdown :</em></p>
+    <pre><code>Phrase sur la première ligne··
+Phrase juste en dessous (saut de ligne forcé)
+
+Phrase encore plus bas (nouveau paragraphe car ligne vide)
+</code></pre>
+    <p><small>(ici, <code>··</code> représente deux espaces tapés au clavier)</small></p>
+
+    <p><em>Rendu attendu :</em></p>
+    <div style="border:1px solid #ccc; padding:10px; margin-bottom:10px;">
+      <p><strong>Dans l’éditeur (HTML) :</strong><br>
+      Phrase sur la première ligne<br>
+      Phrase juste en dessous (saut de ligne forcé)</p>
+      <p>Phrase encore plus bas (nouveau paragraphe car ligne vide)</p>
+
+      <hr>
+
+      <p><strong>Dans le PDF :</strong></p>
+      <p>Phrase sur la première ligne</p>
+      <p>Phrase juste en dessous (nouveau paragraphe dans le PDF)</p>
+      <p>Phrase encore plus bas (nouveau paragraphe car ligne vide)</p>
+    </div>
+
     <h3>Titres</h3>
     <pre><code># Gros titre
 ## Titre moyen
@@ -117,12 +153,12 @@ if ($project && !empty($project['isTemplate']) && $project['isTemplate'] === tru
     <h3>Liens</h3>
     <pre><code>[Texte du lien](http://www.exemple.com)</code></pre>
 
-    <h3>Blockquotes (citations)</h3>
+    <h3>Citations (blockquotes)</h3>
     <pre><code>> Ceci est une citation.
-> Elle peut s'étendre sur plusieurs lignes !</code></pre>
+> Elle peut s'étendre sur plusieurs lignes.</code></pre>
 
     <h3>Images</h3>
-    <p><small>Besoin de télécharger une image ? <a href="http://imgur.com/" target="_blank">Imgur</a> propose une interface simple.</small></p>
+    <p><small>Besoin d’héberger une image ? <a href="http://imgur.com/" target="_blank">Imgur</a> propose une interface simple.</small></p>
     <pre><code>![Texte alternatif](http://www.exemple.com/image.jpg)</code></pre>
     <p><em>⚠️ Pour être détectée dans le PDF, l'image doit être précédée et suivie d'une ligne vide :</em></p>
     <pre><code>
@@ -140,17 +176,17 @@ Paragraphe suivant.
 | Mary     | Smith    | Femme    |
 </code></pre>
 
-<h3>Afficher du code</h3>
-<pre><code>`var exemple = "bonjour !";`</code></pre>
+    <h3>Afficher du code</h3>
+    <pre><code>`var exemple = "bonjour !";`</code></pre>
 
-<p><em>Ou sur plusieurs lignes :</em></p>
-<pre><code>
+    <p><em>Ou sur plusieurs lignes :</em></p>
+    <pre><code>
 &#96;&#96;&#96;bash
 exemple="bonjour !"
 echo "$exemple"
 &#96;&#96;&#96;
 </code></pre>
-</div>
+  </div>
 </div>
 
 <script>

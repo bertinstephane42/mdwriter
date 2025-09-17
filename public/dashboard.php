@@ -528,46 +528,86 @@ if (adminMsg) {
     }, 8000); // 8 secondes
 }
 
-async function htmlToPdfMake(html) {
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(html, "text/html");
+// ✅ Cache global pour les images
+let imagesMap = {};
 
-	async function parseNode(node) {
-		if (node.nodeType === 3) return node.textContent.trim();
+// Convertir blob -> DataURL utilitaire
+function blobToDataURL(blob) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onerror = () => reject(new Error('FileReader error'));
+        reader.onload = () => resolve(reader.result);
+        reader.readAsDataURL(blob);
+    });
+}
+
+	async function parseNode(node, imagesMap) {
+		if (node.nodeType === 3) return node.textContent;
 		if (node.nodeType !== 1) return null;
 
 		switch (node.tagName.toLowerCase()) {
 			case "h1": return { text: node.textContent.trim(), style: "h1" };
 			case "h2": return { text: node.textContent.trim(), style: "h2" };
 			case "h3": return { text: node.textContent.trim(), style: "h3" };
-
+			
 			case "p": {
-				const children = (await Promise.all(Array.from(node.childNodes).map(parseNode))).filter(Boolean);
-				if (children.length === 1 && typeof children[0] === "string") return { text: children[0], margin: [0,5,0,5] };
-				return children;
+				const childrenNodes = Array.from(node.childNodes);
+				const blocks = [];
+				let inlineFragments = [];
+
+				for (const n of childrenNodes) {
+					if (n.nodeType === 3) {
+						// texte brut
+						inlineFragments.push({ text: n.textContent });
+					} else if (n.nodeType === 1) {
+						const tag = n.tagName.toLowerCase();
+						if (['strong','b','em','i','del','s','code','a'].includes(tag)) {
+							// fragment stylé : on ajoute directement
+							inlineFragments.push(...parseInline(n));
+						} else if (['img','blockquote','pre'].includes(tag)) {
+							// push le texte inline accumulé avant un bloc spécial
+							if (inlineFragments.length > 0) {
+								blocks.push(inlineFragments.length === 1 ? inlineFragments[0] : { text: inlineFragments });
+								inlineFragments = [];
+							}
+							const special = await parseNode(n, imagesMap);
+							blocks.push(special);
+						} else {
+							// autre tag, récursif
+							if (inlineFragments.length > 0) {
+								blocks.push(inlineFragments.length === 1 ? inlineFragments[0] : { text: inlineFragments });
+								inlineFragments = [];
+							}
+							const rec = await parseNode(n, imagesMap);
+							if (rec) blocks.push(rec);
+						}
+					}
+				}
+
+				// texte inline restant
+				if (inlineFragments.length > 0) {
+					blocks.push(inlineFragments.length === 1 ? inlineFragments[0] : { text: inlineFragments });
+				}
+
+				// un seul bloc
+				if (blocks.length === 1) return blocks[0];
+
+				return { stack: blocks, margin: [0,5,0,5] };
 			}
 
 			case "ul": return { ul: await Promise.all(Array.from(node.children).map(parseNode)) };
 			case "ol": return { ol: await Promise.all(Array.from(node.children).map(parseNode)) };
-			case "li": return node.textContent.trim();
+			case "li": {
+				const inlineFragments = parseInline(node);
+				return { text: inlineFragments };
+			}
 
-			case "img":
-				if (node.src.startsWith("data:image")) {
-					return { image: node.src.replace(/\s+/g,''), width: 400, margin: [0,5,0,10] };
-				}
-				return new Promise(resolve => {
-					const img = new Image();
-					img.crossOrigin = "anonymous";
-					img.onload = () => {
-						const canvas = document.createElement("canvas");
-						canvas.width = img.width; canvas.height = img.height;
-						const ctx = canvas.getContext("2d");
-						ctx.drawImage(img, 0, 0);
-						resolve({ image: canvas.toDataURL("image/png"), width: Math.min(400,img.width), margin: [0,5,0,10] });
-					};
-					img.onerror = () => resolve(null);
-					img.src = node.src;
-				});
+			case "img": {
+				const key = node.getAttribute("data-pdfmake-key");
+				if (!key || key === "missing") return { text: "[image manquante]" };
+				const widthAttr = parseInt(node.getAttribute('width') || '0', 10) || 400;
+				return { image: key, width: widthAttr, margin: [0,5,0,10] };
+			}
 
 			case "table": {
 				const rows = Array.from(node.querySelectorAll("tr")).map(tr =>
@@ -578,9 +618,37 @@ async function htmlToPdfMake(html) {
 
 			case "blockquote": {
 				const children = (await Promise.all(Array.from(node.childNodes).map(parseNode))).filter(Boolean);
+
+				// Fonction utilitaire pour extraire tout le texte d'un objet ou tableau de fragments
+				function extractText(fragments) {
+					if (!fragments) return '';
+					if (Array.isArray(fragments)) return fragments.map(extractText).join('');
+					if (typeof fragments === 'string') return fragments;
+					if (fragments.text) return fragments.text;
+					return '';
+				}
+
+				// On concatène tout le texte pour une citation inline
+				const quoteText = extractText(children);
+
+				// Citation courte (inline ou paragraphe)
 				return {
-					stack: children,
-					style: "blockquote"
+					stack: [
+						{
+							text: [{ text: '“' }, ...children, { text: '”' }],
+							italics: true,
+							color: "#444444",
+							fontSize: 12,
+							margin: [10,2,0,2],
+							characterSpacing: 0.5
+						},
+						{
+							canvas: [
+								{ type: 'line', x1: 0, y1: 0, x2: 400, y2: 0, lineWidth: 1, lineColor: '#cccccc' }
+							],
+							margin: [10,2,0,5]
+						}
+					]
 				};
 			}
 
@@ -592,7 +660,6 @@ async function htmlToPdfMake(html) {
 							[
 								{
 									text: node.textContent,
-									fontFamily: 'Courier',
 									fontSize: 10,
 									color: '#333333',
 									preserveLeadingSpaces: true
@@ -611,105 +678,217 @@ async function htmlToPdfMake(html) {
 					},
 					margin: [0, 5, 0, 5]
 				};
-			case "code": return { text: node.textContent.trim(), style: "inlineCode" };
-			case "a": return { text: node.textContent.trim(), link: node.href, style: "link" };
-			case "strong": return { text: node.textContent.trim(), bold: true };
-			case "b": return { text: node.textContent.trim(), bold: true };
-			case "em": return { text: node.textContent.trim(), italics: true };
-			case "i": return { text: node.textContent.trim(), italics: true };
-			case "del": 
-			case "s": return { text: node.textContent.trim(), decoration: "lineThrough" };
+			case "code": {
+				const isInline = node.parentElement && node.parentElement.tagName.toLowerCase() !== "pre";
+
+				if (isInline) {
+					// Inline code stylé (vraiment inline)
+					return {
+						text: node.textContent,
+						fontSize: 10,
+						color: '#333333',
+						background: '#f5f5f5',
+						margin: [0, 0.5, 0, 0.5],
+						style: { font: 'Roboto' },
+						preserveLeadingSpaces: true
+					};
+				}
+
+				// sinon bloc comme avant
+				return {
+					table: {
+						widths: ['*'],
+						body: [[{
+							text: node.textContent,
+							fontSize: 10,
+							color: '#333333',
+							preserveLeadingSpaces: true
+						}]]
+					},
+					layout: {
+						fillColor: '#f5f5f5',
+						hLineWidth: () => 0,
+						vLineWidth: () => 0,
+						paddingTop: () => 5,
+						paddingBottom: () => 5,
+						paddingLeft: () => 5,
+						paddingRight: () => 5
+					},
+					margin: [0, 5, 0, 5]
+				};
+			}
+			case "a": return { text: node.textContent, link: node.href, style: "link" };
 
 			default:
-				return (await Promise.all(Array.from(node.childNodes).map(parseNode))).filter(Boolean);
-		}
+				/*return (await Promise.all(Array.from(node.childNodes).map(parseNode))).filter(Boolean);*/
+				return (await Promise.all(
+					Array.from(node.childNodes).map(n => parseNode(n, imagesMap))
+				)).flat().filter(Boolean);
+			}
 	}
 
-    const content = (await Promise.all(
-        Array.from(doc.body.childNodes).map(parseNode)
-    )).flat().filter(Boolean);
+	function parseInline(node) {
+		if (node.nodeType === Node.TEXT_NODE) {
+			return [{ text: node.textContent }];
+		}
+		if (node.nodeType !== Node.ELEMENT_NODE) {
+			return [];
+		}
+
+		const tag = node.tagName.toLowerCase();
+		let children = [];
+		node.childNodes.forEach(child => {
+			children.push(...parseInline(child));
+		});
+
+		// Appliquer le style du tag courant à tous les enfants
+		return children.map(c => {
+			const frag = { ...c };
+			if (tag === 'em' || tag === 'i') frag.italics = true;
+			if (tag === 'strong' || tag === 'b') frag.bold = true;
+			if (tag === 's' || tag === 'del') frag.decoration = 'lineThrough';
+			if (tag === 'code' && node.parentElement?.tagName.toLowerCase() !== 'pre') {
+				frag.fontSize = 10;
+				frag.color = '#333333';
+				frag.background = '#f5f5f5';
+				frag.preserveLeadingSpaces = true;
+				frag.margin = [0, 0.5, 0, 0.5];
+			}
+			if (tag === 'a' && node.href) {
+				frag.link = node.href;
+				frag.color = "#0000EE";
+				frag.decoration = "underline";
+			}
+			return frag;
+		});
+	}
+
+async function convertImagesToDataURL(doc, imagesMap) {
+    const images = doc.querySelectorAll("img");
+    const promises = Array.from(images).map(img => {
+        return new Promise(resolve => {
+            const canvas = document.createElement("canvas");
+            const ctx = canvas.getContext("2d");
+            const image = new Image();
+
+            image.crossOrigin = "anonymous";
+
+            image.onload = function () {
+                canvas.width = image.width;
+                canvas.height = image.height;
+                ctx.drawImage(image, 0, 0);
+
+                const dataUrl = canvas.toDataURL("image/png");
+
+                // Génération d'une clé unique
+                const key = "img_" + Object.keys(imagesMap).length;
+
+                // Stockage dans imagesMap
+                imagesMap[key] = dataUrl;
+
+                // Mise à jour du DOM
+                img.setAttribute("data-pdfmake-key", key);
+
+                resolve();
+            };
+
+            image.onerror = function () {
+                console.warn("[convertImagesToDataURL] Impossible de charger l'image :", img.src);
+                img.setAttribute("data-pdfmake-key", "missing");
+                resolve();
+            };
+
+            image.src = img.src;
+        });
+    });
+
+    await Promise.all(promises);
+}
+
+async function htmlToPdfMake(input, imagesMap = {}) {
+    let doc;
+    if (input instanceof Document) {
+        doc = input;
+    } else if (typeof input === "string") {
+        const parser = new DOMParser();
+        doc = parser.parseFromString(input, "text/html");
+    } else {
+        throw new Error("htmlToPdfMake: entrée invalide");
+    }
+
+	const content = (await parseNode(doc.body, imagesMap))
+    .flat()
+    .filter(Boolean);
 
     return {
-		content,
-		styles: {
-			h1: { fontSize: 18, bold: true, margin: [0,10,0,5] },
-			h2: { fontSize: 16, bold: true, margin: [0,8,0,4] },
-			h3: { fontSize: 14, bold: true, margin: [0,6,0,3] },
-			blockquote: {
-				italics: true,
-				margin: [10,5,0,5],
-				color: "#555555",
-				border: [true, false, false, false], // bord gauche
-				fillColor: "#f0f0f0",
-				margin: [10,5,0,5],
-				padding: [10,5,5,5]
-			},
-			codeBlock: {
-				fontSize: 10,
-				fontFamily: "Courier",
-				color: "#333333",
-				margin: [0, 5, 0, 5],
-				preserveLeadingSpaces: true,
-				fillColor: "#f5f5f5"
-			},
-			inlineCode: {
-				fontSize: 10,
-				fontFamily: "Courier",
-				color: "#d6336c",
-				background: "#f0f0f0"
-			},
-			link: { color: "#0000EE", decoration: "underline" }
-		},
-		footer: (currentPage, pageCount) => ({
-			text: `Page ${currentPage} / ${pageCount}`,
-			alignment: "center",
-			fontSize: 9,
-			margin: [0, 5, 0, 0]
-		})
-	};
+        content,
+        images: imagesMap,
+        styles: {
+            h1: { fontSize: 18, bold: true, margin: [0,10,0,5] },
+            h2: { fontSize: 16, bold: true, margin: [0,8,0,4] },
+            h3: { fontSize: 14, bold: true, margin: [0,6,0,3] },
+            blockquote: {
+                italics: true,
+                margin: [10,5,0,5],
+                color: "#555555",
+                border: [true, false, false, false],
+                fillColor: "#f0f0f0",
+                borderColor: ["#cccccc", null, null, null],
+                borderWidth: [2, 0, 0, 0],
+                padding: [10,5,5,5]
+            },
+            link: { color: "#0000EE", decoration: "underline" }
+        },
+        footer: (currentPage, pageCount) => ({
+            text: `Page ${currentPage} / ${pageCount}`,
+            alignment: "center",
+            fontSize: 9,
+            margin: [0, 5, 0, 0]
+        })
+    };
 }
 
 async function exportProjectPDF(projectId) {
     try {
-        // récupérer le HTML
-        const res = await fetch(`download.php?id=${encodeURIComponent(projectId)}&format=htmlraw`, { credentials: 'same-origin' });
-        if (!res.ok) throw new Error(`Erreur réseau : ${res.status}`);
+        // 1️⃣ Récupérer le HTML depuis le serveur
+        const response = await fetch(`download.php?id=${projectId}&format=htmlraw`, { credentials: 'same-origin' });
+        if (!response.ok) throw new Error(`Erreur HTTP ${response.status}`);
 
-        const buffer = await res.arrayBuffer();
-        const decoder = new TextDecoder("utf-8");
-        let htmlContent = decoder.decode(buffer);
+        let htmlContent = await response.text();
 
-        //console.log("HTML reçu pour PDF :", htmlContent.substring(0, 500));
-
-        // Parser le HTML et convertir toutes les <img> en dataURL normalisé
+        // 2️⃣ Parser le HTML en DOM
         const parser = new DOMParser();
         const doc = parser.parseFromString(htmlContent, "text/html");
-        const imgs = doc.querySelectorAll("img");
 
-        for (let img of imgs) {
-            if (img.src.startsWith("data:")) {
-                // Normalisation du format (important pour pdfMake)
-                const normalized = img.src.replace(/\s+/g, '');
-                img.setAttribute("src", normalized);
-            } else {
-                // Si jamais tu avais des URL relatives -> on pourrait les convertir en base64 ici
-                // Mais comme ton image est déjà en data:image/jpeg;base64, pas besoin
-            }
+        if (!doc || !doc.body) {
+            console.error("❌ HTML mal formé ou vide :", htmlContent);
+            alert("Le contenu HTML est invalide. Impossible de générer le PDF.");
+            return;
         }
 
-        const bodyContent = doc.body.innerHTML;
+        // 3️⃣ Convertir toutes les images en DataURL
+        const imagesMap = {};
+        await convertImagesToDataURL(doc, imagesMap);
 
-        // Conversion en docDefinition
-        const docDefinition = await htmlToPdfMake(bodyContent, {
-            imagesByReference: true // OPTIONNEL : pdfMake gère mieux les dataURL avec cette option
-        });
+        // 4️⃣ Générer le docDefinition avec images intégrées
+        const docDefinition = await htmlToPdfMake(doc, imagesMap);
 
-        // Génération du PDF
-        pdfMake.createPdf(docDefinition).download("rapport.pdf");
+        if (!docDefinition || !docDefinition.content) {
+            throw new Error("La génération du docDefinition a échoué.");
+        }
 
-    } catch (err) {
-        console.error("Erreur export PDF", err);
-        alert("Erreur lors de la génération du PDF. Vérifie la console.");
+        // 5️⃣ Récupérer le titre du projet pour le nom du PDF
+        let titleElement = doc.querySelector('title') || doc.querySelector('h1');
+        let title = titleElement ? titleElement.textContent.trim() : 'export';
+        // Nettoyer le titre pour supprimer caractères non autorisés dans un nom de fichier
+        title = title.replace(/[\\\/:*?"<>|]/g, '_');
+
+        // 6️⃣ Créer et télécharger le PDF avec le nom dynamique
+        pdfMake.createPdf(docDefinition).download(`export_${title}.pdf`);
+
+    } catch (error) {
+        console.error("Erreur lors de l'export PDF :", error);
+        alert("Impossible de générer le PDF. Vérifie la console pour plus de détails.");
     }
 }
 
