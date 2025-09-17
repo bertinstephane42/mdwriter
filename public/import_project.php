@@ -18,52 +18,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['projectFile'])) {
         if ($data === null) {
             die("Fichier JSON invalide.");
         }
+		
+		// ❌ Bloquer si isTemplate === true
+        if (!empty($data['isTemplate'])) {
+            die("Impossible d'importer un fichier JSON de type template.");
+        }
+		
+		// ✅ Vérification des attributs obligatoires
+        $requiredAttrs = ['title', 'markdown', 'date'];
+        $missingAttrs = array_filter($requiredAttrs, fn($attr) => !isset($data[$attr]));
+        if (!empty($missingAttrs)) {
+            die("Impossible d'importer : attributs manquants dans le JSON -> " . implode(', ', $missingAttrs));
+        }
 
-        // Nom projet imposé : proj_XXXXXXXXXXXXX (13 caractères)
+        // Créer un nouvel ID pour le projet importé
         $newId = "proj_" . substr(md5(uniqid('', true)), 0, 9);
 
-        $user = $_SESSION['user'];
-        $projects = listProjects($user);
+        // Optionnel : modifier le titre pour indiquer que c'est un clone
+        $title = trim($data['title'] ?? 'Sans titre');
+        $data['title'] = $title . " (clone)";
 
-        // Vérifier si un projet du même titre existe déjà
-        $title = $data['title'] ?? 'Sans titre';
-        $exists = false;
-        foreach ($projects as $p) {
-            if ($p['title'] === $title) {
-                $exists = true;
-                break;
-            }
-        }
-
-        if ($exists) {
-            // Demander confirmation avant suppression
-            echo "<script>
-                if (confirm('Un projet portant ce titre existe déjà. Voulez-vous le remplacer ?')) {
-                    window.location.href = 'import_project.php?confirm=1&title=" . urlencode($title) . "&tmp=" . urlencode($file['tmp_name']) . "';
-                } else {
-                    window.location.href = 'dashboard.php';
-                }
-            </script>";
-            exit;
-        }
-
-        // Sauvegarder le projet importé
+        // Sauvegarder le projet importé avec nouvel ID
         importProject($data);
+
+        // Redirection vers le dashboard
         header("Location: dashboard.php");
         exit;
+    } else {
+        die("Erreur lors de l'upload ou type de fichier invalide.");
     }
-}
-
-// Confirmation après le prompt JS
-if (isset($_GET['confirm']) && $_GET['confirm'] == 1 && isset($_GET['title']) && isset($_GET['tmp'])) {
-    $user = $_SESSION['user'];
-    $content = file_get_contents($_GET['tmp']);
-    $data = json_decode($content, true);
-    if ($data) {
-        $newId = "proj_" . substr(md5(uniqid('', true)), 0, 9);
-        saveProject($user, $newId, $data);
-    }
-    header("Location: dashboard.php");
-    exit;
 }
 ?>

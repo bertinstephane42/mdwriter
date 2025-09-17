@@ -12,6 +12,12 @@ if ($projectId) {
         die("Erreur lors du chargement du projet : " . htmlspecialchars($e->getMessage()));
     }
 }
+if ($project && !empty($project['isTemplate']) && $project['isTemplate'] === true) {
+    // Protéger le template contre toute modification
+    $isTemplate = true;
+} else {
+    $isTemplate = false;
+}
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -28,11 +34,20 @@ if ($projectId) {
 
 <form id="editorForm">
     <input type="hidden" name="id" value="<?= htmlspecialchars($projectId ?? '') ?>">
-    <input type="text" name="title" placeholder="Titre" value="<?= htmlspecialchars($project['title'] ?? '') ?>"><br>
-    <textarea id="editor" name="markdown"><?= htmlspecialchars($project['markdown'] ?? '') ?></textarea><br>
+    <input type="text" name="title" placeholder="Titre"
+       value="<?= htmlspecialchars($project['title'] ?? '') ?>"
+       <?= $isTemplate ? 'readonly' : '' ?>><br>
+	<textarea id="editor" name="markdown" <?= $isTemplate ? 'readonly' : '' ?>>
+		<?= htmlspecialchars($project['markdown'] ?? '') ?>
+	</textarea><br>
 
-    <!-- Bouton Sauvegarder -->
-    <button type="submit" name="action" value="save" class="btn btn-save">💾 Sauvegarder</button>
+	<?php if (!$isTemplate): ?>
+		<!-- Bouton Sauvegarder seulement si ce n’est pas un template -->
+		<p id="charCount" style="font-size:0.9em; color:#555;">0/500000</p>
+		<button type="submit" name="action" value="save" class="btn btn-save">💾 Sauvegarder</button>
+	<?php else: ?>
+		<p style="color:red; font-weight:bold;">⚠️ Ce modèle est protégé et ne peut pas être modifié.</p>
+	<?php endif; ?>
 
     <p>
         <!-- Boutons images -->
@@ -49,99 +64,94 @@ if ($projectId) {
 	</p>
 </form>
 
-<!-- Modale Upload Image -->
-<div id="uploadModal" class="modal" style="display:none;">
-  <div class="modal-content" style="max-width:400px; padding:20px; background:#fff;">
-    <span class="close-upload" style="cursor:pointer;float:right;font-size:1.5em;">&times;</span>
-    <h3>Uploader une image</h3>
-    <form id="uploadForm">
-      <input type="file" name="image" accept="image/*" required>
-      <button type="submit">📤 Envoyer</button>
-    </form>
-    <p id="uploadResult" style="margin-top:10px;"></p>
-  </div>
-</div>
+	<!-- Modale Upload Image -->
+	<div id="uploadModal" class="modal" style="display:none;">
+	  <div class="modal-content" style="max-width:400px; padding:20px; background:#fff;">
+		<span class="close-upload" style="cursor:pointer;float:right;font-size:1.5em;">&times;</span>
+		<h3>Uploader une image</h3>
+		<form id="uploadForm">
+		  <input type="file" name="image" accept="image/*" required>
+		  <button type="submit">📤 Envoyer</button>
+		</form>
+		<p id="uploadResult" style="margin-top:10px;"></p>
+	  </div>
+	</div>
 
-<!-- Modale d'aide Markdown -->
-<div id="helpModal" class="modal">
-  <div class="modal-content" style="max-height:80vh; overflow-y:auto;">
-    <span class="close" style="cursor:pointer;float:right;font-size:1.5em;">&times;</span>
-    <h1 style="text-align:center;">Guide Markdown</h1>
+	<!-- Modale d'aide Markdown -->
+	<div id="helpModal" class="modal">
+	  <div class="modal-content" style="max-height:80vh; overflow-y:auto;">
+		<span class="close" style="cursor:pointer;float:right;font-size:1.5em;">&times;</span>
+		<h1 style="text-align:center;">Guide Markdown</h1>
 
-    <h3>Bonnes pratiques</h3>
-    <ul>
-      <li>Structurer le document avec titres et sous-titres.</li>
-      <li>Numéroter les étapes d’une procédure.</li>
-      <li>Inclure des blocs de code pour les commandes ou scripts.</li>
-      <li>Ne pas abuser de la mise en forme ; privilégier la clarté.</li>
-      <li>Exporter régulièrement pour sauvegarder votre travail.</li>
-      <li><strong>Important pour le PDF :</strong> une image doit être **isolée sur une ligne avant et après** pour être détectée correctement lors de la conversion PDF.</li>
-    </ul>
+		<h3>Bonnes pratiques</h3>
+		<ul>
+		  <li>Structurer le document avec titres et sous-titres.</li>
+		  <li>Numéroter les étapes d’une procédure.</li>
+		  <li>Inclure des blocs de code pour les commandes ou scripts.</li>
+		  <li>Ne pas abuser de la mise en forme ; privilégier la clarté.</li>
+		  <li>Exporter régulièrement pour sauvegarder votre travail.</li>
+		  <li><strong>Important pour le PDF :</strong> une image doit être **isolée sur une ligne avant et après** pour être détectée correctement lors de la conversion PDF.</li>
+		</ul>
 
-    <h3>Mise en forme</h3>
-    <pre><code>**gras**
-*italique*
-~~barré~~</code></pre>
+		<h3>Mise en forme</h3>
+		<pre><code>**gras**
+	*italique*
+	~~barré~~</code></pre>
 
-    <h3>Titres</h3>
-    <pre><code># Gros titre
-## Titre moyen
-### Petit titre
-#### Très petit titre</code></pre>
+		<h3>Titres</h3>
+		<pre><code># Gros titre
+	## Titre moyen
+	### Petit titre
+	#### Très petit titre</code></pre>
 
-    <h3>Listes</h3>
-    <pre><code>* Élément de liste
-* Élément de liste
-* Élément de liste
+		<h3>Listes</h3>
+		<pre><code>* Élément de liste
+	* Élément de liste
+	* Élément de liste
 
-1. Élément numéroté
-2. Élément numéroté
-3. Élément numéroté</code></pre>
+	1. Élément numéroté
+	2. Élément numéroté
+	3. Élément numéroté</code></pre>
 
-    <h3>Liens</h3>
-    <pre><code>[Texte du lien](http://www.exemple.com)</code></pre>
+		<h3>Liens</h3>
+		<pre><code>[Texte du lien](http://www.exemple.com)</code></pre>
 
-    <h3>Blockquotes (citations)</h3>
-    <pre><code>> Ceci est une citation.
-> Elle peut s'étendre sur plusieurs lignes !</code></pre>
+		<h3>Blockquotes (citations)</h3>
+		<pre><code>> Ceci est une citation.
+	> Elle peut s'étendre sur plusieurs lignes !</code></pre>
 
-    <h3>Images</h3>
-    <p><small>Besoin de télécharger une image ? <a href="http://imgur.com/" target="_blank">Imgur</a> propose une interface simple.</small></p>
-    <pre><code>![Texte alternatif](http://www.exemple.com/image.jpg)</code></pre>
-    <p><em>⚠️ Pour être détectée dans le PDF, l'image doit être précédée et suivie d'une ligne vide :</em></p>
-    <pre><code>
-Voici un paragraphe.
+		<h3>Images</h3>
+		<p><small>Besoin de télécharger une image ? <a href="http://imgur.com/" target="_blank">Imgur</a> propose une interface simple.</small></p>
+		<pre><code>![Texte alternatif](http://www.exemple.com/image.jpg)</code></pre>
+		<p><em>⚠️ Pour être détectée dans le PDF, l'image doit être précédée et suivie d'une ligne vide :</em></p>
+		<pre><code>
 
-![Texte alternatif](http://www.exemple.com/image.jpg)
+	Voici un paragraphe.
 
-Paragraphe suivant.
-</code></pre>
+	![Texte alternatif](http://www.exemple.com/image.jpg)
 
-    <h3>Tableaux</h3>
-    <pre><code>| Colonne 1 | Colonne 2 | Colonne 3 |
-| -------- | -------- | -------- |
-| John     | Doe      | Homme    |
-| Mary     | Smith    | Femme    |
+	Paragraphe suivant.
 
-<em>Ou sans aligner les colonnes :</em>
+	</code></pre>
 
-| Colonne 1 | Colonne 2 | Colonne 3 |
-| -------- | -------- | -------- |
-| John | Doe | Homme |
-| Mary | Smith | Femme |</code></pre>
+		<h3>Tableaux</h3>
+		<pre><code>| Colonne 1 | Colonne 2 | Colonne 3 |
+	| -------- | -------- | -------- |
+	| John | Doe | Homme |
+	| Mary | Smith | Femme |
 
-    <h3>Afficher du code</h3>
-    <pre><code>`var exemple = "bonjour !";`</code></pre>
+		<h3>Afficher du code</h3>
+		<pre><code>`var exemple = "bonjour !";`</code></pre>
 
-    <p><em>Ou sur plusieurs lignes :</em></p>
-    <pre><code>
-&#96;&#96;&#96;bash
-exemple="bonjour !"
-echo "$exemple"
-&#96;&#96;&#96;bash
-</code></pre>
-  </div>
-</div>
+		<p><em>Ou sur plusieurs lignes :</em></p>
+		<pre><code>
+	&#96;&#96;&#96;bash
+	exemple="bonjour !"
+	echo "$exemple"
+	&#96;&#96;&#96;
+	</code></pre>
+	  </div>
+	</div>
 
 <script>
 document.addEventListener("DOMContentLoaded", function() {
@@ -194,6 +204,21 @@ document.addEventListener("DOMContentLoaded", function() {
 		uniqueId: autosaveKey,
 		delay: 1000
 	};
+	
+	const charCountElem = document.getElementById("charCount");
+	const maxMarkdownLength = 500000; // Limite du contenu Markdown
+
+	function updateCharCount() {
+		if (!charCountElem) return; // Ne rien faire si l'élément n'existe pas
+		const length = simplemde.value().length;
+		charCountElem.textContent = `${length}/${maxMarkdownLength}`;
+	}
+
+	// Initialiser le compteur au chargement
+	updateCharCount();
+
+	// Mettre à jour à chaque modification
+	simplemde.codemirror.on("change", updateCharCount);
 
     // --- Gestion Upload Image ---
     const uploadModal = document.getElementById("uploadModal");
@@ -248,20 +273,38 @@ document.addEventListener("DOMContentLoaded", function() {
 		e.preventDefault();
 
 		const titleInput = form.querySelector('input[name="title"]');
-		if (!titleInput.value.trim()) {
+		const title = titleInput.value.trim();
+		const markdown = simplemde.value();
+		const maxMarkdownLength = 500000; // Limite du contenu Markdown
+
+		// Vérification : titre vide
+		if (!title) {
 			alert("Veuillez renseigner un titre avant de sauvegarder !");
 			titleInput.focus();
 			return false;
 		}
 
+		// Vérification : titre trop long
+		if (title.length > 25) {
+			alert("Le titre ne doit pas dépasser 25 caractères !");
+			titleInput.focus();
+			return false;
+		}
+
+		// Vérification : contenu trop long
+		if (markdown.length > maxMarkdownLength) {
+			alert(`Le contenu est trop long ! Maximum autorisé : ${maxMarkdownLength} caractères.`);
+			return false;
+		}
+
 		// Mettre à jour le textarea avant l'envoi
-		form.querySelector('textarea[name="markdown"]').value = simplemde.value();
+		form.querySelector('textarea[name="markdown"]').value = markdown;
 
 		// Construire formData avec le champ action=save
 		const formData = new FormData(form);
 		formData.append("action", "save");
 
-		fetch('api/projects.php', {  // <-- ici on pointe sur le nouvel endpoint public
+		fetch('api/projects.php', { 
 			method: 'POST',
 			body: formData
 		})
@@ -297,6 +340,18 @@ document.addEventListener("DOMContentLoaded", function() {
 
         window.location.href = "dashboard.php";
     });
+	
+	// Vérification du template
+	const isTemplate = <?= $isTemplate ? 'true' : 'false' ?>;
+	if (isTemplate) {
+		// Rendre l’éditeur en lecture seule
+		simplemde.codemirror.setOption("readOnly", "nocursor");
+
+		// Désactiver boutons inutiles
+		document.querySelectorAll(".btn-save, #addImageBtn, #browseGalleryBtn").forEach(btn => {
+			if (btn) btn.disabled = true;
+		});
+	}
 	
 	// --- Bouton Naviguer dans la galerie ---
 	const browseGalleryBtn = document.getElementById("browseGalleryBtn");

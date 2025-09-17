@@ -195,7 +195,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST'
 		<a class="btn" href="editor.php">➕ Nouveau rapport</a>
 
 		<form id="importForm" action="import_project.php" method="post" enctype="multipart/form-data" style="display:none;">	
-			<input type="file" id="importFile" name="projectFile" accept="application/json" style="display:none;" onchange="this.form.submit();">
+			<input type="file" id="importFile" name="projectFile" accept="application/json" style="display:none;">
 		</form>
 		<label for="importFile" class="btn">📂 Importer rapport</label>
 
@@ -277,7 +277,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST'
 			<li>
 				<strong><?= htmlspecialchars($p['title']) ?></strong> 
 				[<a href="editor.php?id=<?= urlencode($p['id']) ?>" class="action-edit">éditer</a>]
-				[<a href="delete_project.php?id=<?= urlencode($p['id']) ?>" class="action-delete">supprimer</a>]
+				[<a href="delete_project.php?id=<?= urlencode($p['id']) ?>" class="action-delete" data-istemplate="<?= !empty($p['isTemplate']) ? '1' : '0' ?>">supprimer</a>]
 				[<a href="download.php?id=<?= urlencode($p['id']) ?>&format=json" class="action-export">json</a>]
 				[<a href="download.php?id=<?= urlencode($p['id']) ?>&format=md" class="action-export">md</a>]
 				[<a href="download.php?id=<?= urlencode($p['id']) ?>&format=html" class="action-export">html</a>]
@@ -461,6 +461,14 @@ table th, table td {
 <script>
 document.querySelectorAll('.action-delete').forEach(link => {
     link.addEventListener('click', function(e) {
+        const isTemplate = this.dataset.istemplate === "1";
+
+        if (isTemplate) {
+            e.preventDefault();
+            alert("⚠️ Ce modèle ne peut pas être supprimé.");
+            return false;
+        }
+
         if (!confirm("Voulez-vous vraiment supprimer ce projet ? Cette action est irréversible.")) {
             e.preventDefault();
         }
@@ -528,103 +536,98 @@ async function htmlToPdfMake(html) {
     const parser = new DOMParser();
     const doc = parser.parseFromString(html, "text/html");
 
-    async function parseNode(node) {
-        if (node.nodeType === 3) {
-            return node.textContent.trim();
-        }
-        if (node.nodeType !== 1) return null;
+	async function parseNode(node) {
+		if (node.nodeType === 3) return node.textContent.trim();
+		if (node.nodeType !== 1) return null;
 
-        switch (node.tagName.toLowerCase()) {
-            case "h1":
-                return { text: node.textContent.trim(), style: "h1" };
-            case "h2":
-                return { text: node.textContent.trim(), style: "h2" };
-            case "h3":
-                return { text: node.textContent.trim(), style: "h3" };
+		switch (node.tagName.toLowerCase()) {
+			case "h1": return { text: node.textContent.trim(), style: "h1" };
+			case "h2": return { text: node.textContent.trim(), style: "h2" };
+			case "h3": return { text: node.textContent.trim(), style: "h3" };
 
-            case "p":
-                // 🔧 Correction : traiter récursivement les enfants (texte + images)
-                const pChildren = (await Promise.all(Array.from(node.childNodes).map(parseNode))).filter(Boolean);
-                if (pChildren.length === 1 && typeof pChildren[0] === "string") {
-                    return { text: pChildren[0], margin: [0, 5, 0, 5] };
-                }
-                return pChildren; // conserve images et autres contenus dans le paragraphe
+			case "p": {
+				const children = (await Promise.all(Array.from(node.childNodes).map(parseNode))).filter(Boolean);
+				if (children.length === 1 && typeof children[0] === "string") return { text: children[0], margin: [0,5,0,5] };
+				return children;
+			}
 
-            case "ul":
-                return { ul: await Promise.all(Array.from(node.children).map(parseNode)) };
-            case "ol":
-                return { ol: await Promise.all(Array.from(node.children).map(parseNode)) };
-            case "li":
-                return node.textContent.trim();
+			case "ul": return { ul: await Promise.all(Array.from(node.children).map(parseNode)) };
+			case "ol": return { ol: await Promise.all(Array.from(node.children).map(parseNode)) };
+			case "li": return node.textContent.trim();
 
-            case "img":
-                // ✅ Image en base64 déjà intégrée
-                if (node.src.startsWith("data:image")) {
-                    const cleanSrc = node.src.replace(/\s+/g, '');
-                    //console.log("Image détectée pour PDF:", cleanSrc.substring(0, 80) + "...");
-                    return {
-                        image: cleanSrc,
-                        width: 400,
-                        margin: [0, 5, 0, 10]
-                    };
-                }
+			case "img":
+				if (node.src.startsWith("data:image")) {
+					return { image: node.src.replace(/\s+/g,''), width: 400, margin: [0,5,0,10] };
+				}
+				return new Promise(resolve => {
+					const img = new Image();
+					img.crossOrigin = "anonymous";
+					img.onload = () => {
+						const canvas = document.createElement("canvas");
+						canvas.width = img.width; canvas.height = img.height;
+						const ctx = canvas.getContext("2d");
+						ctx.drawImage(img, 0, 0);
+						resolve({ image: canvas.toDataURL("image/png"), width: Math.min(400,img.width), margin: [0,5,0,10] });
+					};
+					img.onerror = () => resolve(null);
+					img.src = node.src;
+				});
 
-                // ✅ Fallback : charger l'image externe via canvas
-                return new Promise((resolve) => {
-                    const img = new Image();
-                    img.crossOrigin = "anonymous";
-                    img.onload = () => {
-                        const canvas = document.createElement("canvas");
-                        canvas.width = img.width;
-                        canvas.height = img.height;
-                        const ctx = canvas.getContext("2d");
-                        ctx.drawImage(img, 0, 0);
-                        resolve({
-                            image: canvas.toDataURL("image/png"),
-                            width: Math.min(400, img.width),
-                            margin: [0, 5, 0, 10]
-                        });
-                    };
-                    img.onerror = () => {
-                        console.warn("Image introuvable ou inaccessible :", node.src);
-                        resolve(null);
-                    };
-                    img.src = node.src;
-                });
+			case "table": {
+				const rows = Array.from(node.querySelectorAll("tr")).map(tr =>
+					Array.from(tr.querySelectorAll("td,th")).map(td => td.textContent.trim())
+				);
+				return { table: { body: rows }, margin: [0,5,0,10] };
+			}
 
-            case "table":
-                const rows = Array.from(node.querySelectorAll("tr")).map(tr =>
-                    Array.from(tr.querySelectorAll("td,th")).map(td => td.textContent.trim())
-                );
-                return { table: { body: rows }, margin: [0, 5, 0, 10] };
-
-			case "blockquote":
-				const quoteChildren = (await Promise.all(Array.from(node.childNodes).map(parseNode))).filter(Boolean);
+			case "blockquote": {
+				const children = (await Promise.all(Array.from(node.childNodes).map(parseNode))).filter(Boolean);
 				return {
-					stack: quoteChildren,
-					italics: true,
-					margin: [10, 5, 0, 5],
-					color: "#555555",
-					decoration: "underline"
+					stack: children,
+					style: "blockquote"
 				};
+			}
 
 			case "pre":
 				return {
-					text: node.textContent.trim(),
-					style: "codeBlock",
+					table: {
+						widths: ['*'],
+						body: [
+							[
+								{
+									text: node.textContent,
+									fontFamily: 'Courier',
+									fontSize: 10,
+									color: '#333333',
+									preserveLeadingSpaces: true
+								}
+							]
+						]
+					},
+					layout: {
+						fillColor: '#f5f5f5',
+						hLineWidth: () => 0,
+						vLineWidth: () => 0,
+						paddingTop: () => 5,
+						paddingBottom: () => 5,
+						paddingLeft: () => 5,
+						paddingRight: () => 5
+					},
 					margin: [0, 5, 0, 5]
 				};
+			case "code": return { text: node.textContent.trim(), style: "inlineCode" };
+			case "a": return { text: node.textContent.trim(), link: node.href, style: "link" };
+			case "strong": return { text: node.textContent.trim(), bold: true };
+			case "b": return { text: node.textContent.trim(), bold: true };
+			case "em": return { text: node.textContent.trim(), italics: true };
+			case "i": return { text: node.textContent.trim(), italics: true };
+			case "del": 
+			case "s": return { text: node.textContent.trim(), decoration: "lineThrough" };
 
-			case "code":
-				return {
-					text: node.textContent.trim(),
-					style: "inlineCode"
-				};
-
-            default:
-                return (await Promise.all(Array.from(node.childNodes).map(parseNode))).filter(Boolean);
-        }
-    }
+			default:
+				return (await Promise.all(Array.from(node.childNodes).map(parseNode))).filter(Boolean);
+		}
+	}
 
     const content = (await Promise.all(
         Array.from(doc.body.childNodes).map(parseNode)
@@ -633,28 +636,33 @@ async function htmlToPdfMake(html) {
     return {
 		content,
 		styles: {
-			h1: { fontSize: 18, bold: true, margin: [0, 10, 0, 5] },
-			h2: { fontSize: 16, bold: true, margin: [0, 8, 0, 4] },
-			h3: { fontSize: 14, bold: true, margin: [0, 6, 0, 3] },
+			h1: { fontSize: 18, bold: true, margin: [0,10,0,5] },
+			h2: { fontSize: 16, bold: true, margin: [0,8,0,4] },
+			h3: { fontSize: 14, bold: true, margin: [0,6,0,3] },
 			blockquote: {
 				italics: true,
-				margin: [10, 5, 0, 5],
+				margin: [10,5,0,5],
 				color: "#555555",
-				decoration: "underline"
+				border: [true, false, false, false], // bord gauche
+				fillColor: "#f0f0f0",
+				margin: [10,5,0,5],
+				padding: [10,5,5,5]
 			},
 			codeBlock: {
 				fontSize: 10,
 				fontFamily: "Courier",
 				color: "#333333",
-				fillColor: "#f5f5f5",
-				margin: [0, 5, 0, 5]
+				margin: [0, 5, 0, 5],
+				preserveLeadingSpaces: true,
+				fillColor: "#f5f5f5"
 			},
 			inlineCode: {
 				fontSize: 10,
 				fontFamily: "Courier",
 				color: "#d6336c",
 				background: "#f0f0f0"
-			}
+			},
+			link: { color: "#0000EE", decoration: "underline" }
 		},
 		footer: (currentPage, pageCount) => ({
 			text: `Page ${currentPage} / ${pageCount}`,
@@ -785,12 +793,62 @@ if(adminPasswordForm){
         }
     });
 }
+
 function confirmRoleChange(form) {
     const select = form.querySelector('select[name="role"]');
     const username = form.querySelector('input[name="username"]').value;
     const newRole = select.value;
     return confirm(`Êtes-vous sûr de vouloir modifier le rôle de "${username}" en "${newRole}" ?`);
 }
+
+document.getElementById('importFile').addEventListener('change', function() {
+    const file = this.files[0];
+    if (!file) return;
+
+    if (file.type !== 'application/json') {
+        alert("⚠️ Seuls les fichiers JSON peuvent être importés.");
+        this.value = '';
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+        let data;
+        try {
+            data = JSON.parse(evt.target.result);
+        } catch {
+            alert("Fichier JSON invalide.");
+            this.value = '';
+            return;
+        }
+
+        // ✅ Vérification des attributs obligatoires
+        const requiredAttrs = ['title', 'markdown', 'date'];
+        const missingAttrs = requiredAttrs.filter(attr => !(attr in data));
+        if (missingAttrs.length > 0) {
+            alert(`Le fichier JSON est incomplet. Attributs manquants : ${missingAttrs.join(', ')}`);
+            this.value = '';
+            return;
+        }
+
+        if (data.isTemplate) {
+            alert("⚠️ Impossible d'importer un fichier JSON de type template.");
+            this.value = '';
+            return;
+        }
+		
+		// ✅ Demander confirmation à l'utilisateur avant import
+        const confirmImport = confirm(`Voulez-vous vraiment importer le projet "${data.title ?? 'Sans titre'}" ?`);
+        if (!confirmImport) {
+            this.value = '';
+            return;
+        }
+
+        // ✅ Soumission sécurisée du formulaire
+        this.form.submit();
+    };
+    reader.readAsText(file);
+});
 </script>
 
 </body>

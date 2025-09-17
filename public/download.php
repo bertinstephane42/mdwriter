@@ -59,110 +59,98 @@ switch ($format) {
 		</body>
 		</html>";
 
-		// Création d’un dossier ../tmp protégé par .htaccess
-		$tmpRoot = realpath(__DIR__ . '/../tmp');
-		if (!$tmpRoot) {
-			$tmpRoot = __DIR__ . '/../tmp';
-			mkdir($tmpRoot, 0777, true);
-		}
-
-		// Ajouter un .htaccess pour interdire l'accès web
+		// Créer un dossier tmp sécurisé si inexistant
+		$tmpRoot = realpath(__DIR__ . '/../tmp') ?: __DIR__ . '/../tmp';
+		if (!is_dir($tmpRoot)) mkdir($tmpRoot, 0777, true);
 		$htaccess = $tmpRoot . '/.htaccess';
-		if (!file_exists($htaccess)) {
-			file_put_contents($htaccess, "Deny from all\n");
-		}
+		if (!file_exists($htaccess)) file_put_contents($htaccess, "Deny from all\n");
 
-		// Créer un sous-dossier unique pour cet export
-		$tmpDir = $tmpRoot . "/export_" . uniqid();
-		mkdir($tmpDir, 0777, true);
-		$imagesDir = $tmpDir . "/images";
-		mkdir($imagesDir, 0777, true);
-
-		// Utilisation de DOMDocument pour gérer les images
+		// Analyse HTML pour détecter les images
 		$dom = new DOMDocument();
 		libxml_use_internal_errors(true);
 		$dom->loadHTML($html, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
 		libxml_clear_errors();
 
 		$images = $dom->getElementsByTagName('img');
+		$imageCount = 0;
+		$imagesToCopy = [];
+
+		// Parcourir les images pour voir si elles existent sur le serveur
 		foreach ($images as $img) {
 			$src = $img->getAttribute('src');
-
-			// Debug (à retirer ensuite)
-			// error_log("SRC détecté : " . $src);
-
-			// Reconnaître les URL absolues vers /public/images/<user>/<fichier>
 			if (preg_match('~https?://[^/]+/mdwriter/public/images/([^/]+)/([^/?]+)$~', $src, $m)) {
-				$user = $m[1];
-				$basename = $m[2];
-
-				$absolutePath = __DIR__ . "/../public/images/$user/$basename";
-
+				$absolutePath = __DIR__ . "/../public/images/{$m[1]}/{$m[2]}";
 				if (file_exists($absolutePath)) {
-					// Copier l'image dans le dossier temporaire
-					copy($absolutePath, $imagesDir . "/" . $basename);
+					$imagesToCopy[] = ['src' => $src, 'path' => $absolutePath, 'basename' => $m[2]];
+					$imageCount++;
+				}
+			}
+		}
 
-					// Modifier le src pour pointer vers le dossier images/ du zip
-					$img->setAttribute('src', 'images/' . $basename);
+		// Si des images existent, créer tmpDir et dossier images
+		if ($imageCount > 0) {
+			$tmpDir = $tmpRoot . "/export_" . uniqid();
+			mkdir($tmpDir, 0777, true);
+			$imagesDir = $tmpDir . "/images";
+			mkdir($imagesDir, 0777, true);
+
+			// Copier les images et mettre à jour le HTML
+			foreach ($imagesToCopy as $imgInfo) {
+				copy($imgInfo['path'], $imagesDir . "/" . $imgInfo['basename']);
+				foreach ($images as $img) {
+					if ($img->getAttribute('src') === $imgInfo['src']) {
+						$img->setAttribute('src', 'images/' . $imgInfo['basename']);
+					}
 				}
 			}
 		}
 
 		// Sauvegarder le HTML modifié
 		$html = $dom->saveHTML();
-		$htmlFile = "$tmpDir/rapport.html";
+		$htmlFile = ($imageCount > 0 ? $tmpDir : $tmpRoot) . "/rapport.html";
 		file_put_contents($htmlFile, $html);
 
-		// Création du ZIP
-		$zipPath = $tmpRoot . "/export_" . uniqid() . ".zip";
-		$zip = new ZipArchive();
-		if ($zip->open($zipPath, ZipArchive::CREATE) === TRUE) {
-			// Ajouter le HTML
-			$zip->addFile($htmlFile, "rapport.html");
+		if ($imageCount > 0) {
+			// Création du ZIP
+			$zipPath = $tmpRoot . "/export_" . uniqid() . ".zip";
+			$zip = new ZipArchive();
+			if ($zip->open($zipPath, ZipArchive::CREATE) === TRUE) {
+				$zip->addFile($htmlFile, "rapport.html");
 
-			// Ajouter les images
-			$files = new RecursiveIteratorIterator(
-				new RecursiveDirectoryIterator($imagesDir, FilesystemIterator::SKIP_DOTS),
-				RecursiveIteratorIterator::LEAVES_ONLY
-			);
+				$files = new RecursiveIteratorIterator(
+					new RecursiveDirectoryIterator($imagesDir, FilesystemIterator::SKIP_DOTS),
+					RecursiveIteratorIterator::LEAVES_ONLY
+				);
 
-			foreach ($files as $file) {
-				if ($file->isFile()) {
-					$filePath = $file->getRealPath();
-					$relPath = 'images/' . $file->getBasename();
-					$zip->addFile($filePath, $relPath);
+				foreach ($files as $file) {
+					$zip->addFile($file->getRealPath(), 'images/' . $file->getBasename());
 				}
+
+				$zip->close();
+
+				$filename = preg_replace('/[<>:"\/\\\\|?*]+/', '_', $project['title'] ?? 'rapport') . '.zip';
+				header('Content-Type: application/zip');
+				header('Content-Disposition: attachment; filename="' . $filename . '"');
+				header('Content-Length: ' . filesize($zipPath));
+				readfile($zipPath);
+				unlink($zipPath);
+			} else {
+				exit("Impossible de créer l’archive ZIP");
 			}
 
-			$zip->close();
-
-			// Téléchargement du ZIP
-			$filename = preg_replace('/[<>:"\/\\\\|?*]+/', '_', $project['title'] ?? 'rapport') . '.zip';
-			header('Content-Type: application/zip');
-			header('Content-Disposition: attachment; filename="' . $filename . '"');
-			header('Content-Length: ' . filesize($zipPath));
-			readfile($zipPath);
-
-			// Nettoyage du zip
-			unlink($zipPath);
-
-			// Nettoyage du sous-dossier export
+			// Nettoyage tmpDir
 			array_map('unlink', glob("$imagesDir/*.*"));
 			rmdir($imagesDir);
 			unlink($htmlFile);
 			rmdir($tmpDir);
-
-			// Nettoyage de tous les autres anciens sous-dossiers de ../tmp (sécu)
-			foreach (glob($tmpRoot . "/export_*") as $old) {
-				if (is_dir($old)) {
-					array_map('unlink', glob("$old/*.*"));
-					@rmdir($old);
-				}
-			}
-
-			exit;
 		} else {
-			exit("Impossible de créer l’archive ZIP");
+			// Pas d'image → téléchargement direct du HTML
+			$filename = preg_replace('/[<>:"\/\\\\|?*]+/', '_', $project['title'] ?? 'rapport') . '.html';
+			header('Content-Type: text/html');
+			header('Content-Disposition: attachment; filename="' . $filename . '"');
+			header('Content-Length: ' . filesize($htmlFile));
+			readfile($htmlFile);
+			unlink($htmlFile);
 		}
 	break;
 
