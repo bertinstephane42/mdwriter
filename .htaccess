@@ -1,0 +1,8 @@
+# .htaccess dans /mdwriter/
+
+# Active le moteur de réécriture
+RewriteEngine On
+
+# Si on arrive sur le dossier /mdwriter/ directement
+RewriteCond %{REQUEST_URI} ^/mdwriter/?$ [NC]
+RewriteRule ^.*$ /mdwriter/public/login.php [L,R=302]
