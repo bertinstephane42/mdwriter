@@ -78,13 +78,13 @@ if ($project && !empty($project['isTemplate']) && $project['isTemplate'] === tru
 	</div>
 
 <!-- Modale d'aide Markdown -->
-<!-- Modale d'aide Markdown -->
 <div id="helpModal" class="modal">
   <div class="modal-content" style="max-height:80vh; overflow-y:auto; padding: 20px; font-family:Arial, sans-serif;">
     <span class="close" style="cursor:pointer; float:right; font-size:1.5em;">&times;</span>
 
     <h1 style="text-align:center; margin-bottom: 20px;">Guide Markdown</h1>
 
+    <!-- =================== BONNES PRATIQUES =================== -->
     <h3>Bonnes pratiques</h3>
     <ul>
       <li>Structurer le document avec titres et sous-titres.</li>
@@ -95,11 +95,28 @@ if ($project && !empty($project['isTemplate']) && $project['isTemplate'] === tru
       <li><strong>Important pour le PDF :</strong> une image doit être <strong>isolée sur une ligne avant et après</strong> pour être détectée correctement lors de la conversion PDF.</li>
     </ul>
 
+    <!-- =================== OUTILS DE L'ÉDITEUR =================== -->
+    <h3>Fonctionnalités de l’éditeur SimpleMDE</h3>
+    <ul>
+      <li>🔁 <strong>Annuler / Rétablir</strong> : revenir en arrière ou rétablir une modification.</li>
+      <li>📝 <strong>Mise en forme rapide</strong> : boutons pour gras, italique, barré, titres, citations, listes, etc.</li>
+      <li>📎 <strong>Insérer un lien ou une image</strong> avec les boutons dédiés.</li>
+      <li>💻 <strong>Insérer du code</strong> (inline ou bloc) via les boutons « &lt;/&gt; ».</li>
+      <li>👁️ <strong>Aperçu</strong> : voir le rendu final.</li>
+      <li>📐 <strong>Mode côte à côte</strong> : édition + aperçu en même temps.</li>
+      <li>🖥️ <strong>Plein écran</strong> : plus d’espace pour écrire.</li>
+    </ul>
+
+    <p><em>Astuce :</em> Vous pouvez afficher un caractère spécial (comme <code>*</code> ou <code>#</code>) sans qu’il soit interprété en le précédant d’un <code>\</code> :</p>
+    <pre><code>\*ce texte n'est pas en italique\*</code></pre>
+
+    <!-- =================== MISE EN FORME =================== -->
     <h3>Mise en forme</h3>
     <pre><code>**gras**
 *italique*
 ~~barré~~</code></pre>
 
+    <!-- =================== SAUTS DE LIGNE =================== -->
     <h3>Sauts de ligne et paragraphes</h3>
     <p><strong>⚠️ Attention :</strong> le comportement diffère entre l’éditeur (HTML) et l’export PDF.</p>
     <ul>
@@ -135,12 +152,14 @@ Phrase encore plus bas (nouveau paragraphe car ligne vide)
       <p>Phrase encore plus bas (nouveau paragraphe car ligne vide)</p>
     </div>
 
+    <!-- =================== TITRES =================== -->
     <h3>Titres</h3>
     <pre><code># Gros titre
 ## Titre moyen
 ### Petit titre
 #### Très petit titre</code></pre>
 
+    <!-- =================== LISTES =================== -->
     <h3>Listes</h3>
     <pre><code>* Élément de liste
 * Élément de liste
@@ -150,13 +169,16 @@ Phrase encore plus bas (nouveau paragraphe car ligne vide)
 2. Élément numéroté
 3. Élément numéroté</code></pre>
 
+    <!-- =================== LIENS =================== -->
     <h3>Liens</h3>
     <pre><code>[Texte du lien](http://www.exemple.com)</code></pre>
 
+    <!-- =================== CITATIONS =================== -->
     <h3>Citations (blockquotes)</h3>
     <pre><code>> Ceci est une citation.
 > Elle peut s'étendre sur plusieurs lignes.</code></pre>
 
+    <!-- =================== IMAGES =================== -->
     <h3>Images</h3>
     <p><small>Besoin d’héberger une image ? <a href="http://imgur.com/" target="_blank">Imgur</a> propose une interface simple.</small></p>
     <pre><code>![Texte alternatif](http://www.exemple.com/image.jpg)</code></pre>
@@ -169,6 +191,7 @@ Voici un paragraphe.
 Paragraphe suivant.
     </code></pre>
 
+    <!-- =================== TABLEAUX =================== -->
     <h3>Tableaux</h3>
     <pre><code>| Colonne 1 | Colonne 2 | Colonne 3 |
 | -------- | -------- | -------- |
@@ -176,6 +199,7 @@ Paragraphe suivant.
 | Mary     | Smith    | Femme    |
 </code></pre>
 
+    <!-- =================== CODE =================== -->
     <h3>Afficher du code</h3>
     <pre><code>`var exemple = "bonjour !";`</code></pre>
 
@@ -186,6 +210,10 @@ exemple="bonjour !"
 echo "$exemple"
 &#96;&#96;&#96;
 </code></pre>
+
+    <!-- =================== REGLE HORIZONTALE =================== -->
+    <h3>Règle horizontale</h3>
+    <pre><code>---</code></pre>
   </div>
 </div>
 
