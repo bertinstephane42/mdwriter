@@ -10,7 +10,6 @@ if (!isset($_SESSION['user'])) {
     exit;
 }
 
-$user = $_SESSION['user'];
 $action = $_POST['action'] ?? '';
 
 if ($action === 'save') {
@@ -23,9 +22,12 @@ if ($action === 'save') {
         exit;
     }
 
-    $savedProject = saveProject($user, $projectId, $title, $markdown);
-
-    echo json_encode(['success' => true, 'id' => $savedProject['id']]);
+    try {
+        $savedProject = saveOrUpdateProject($projectId, $title, $markdown);
+        echo json_encode(['success' => true, 'id' => $savedProject['id']]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    }
     exit;
 }
 
