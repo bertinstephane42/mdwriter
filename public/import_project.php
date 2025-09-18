@@ -31,12 +31,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['projectFile'])) {
             die("Impossible d'importer : attributs manquants dans le JSON -> " . implode(', ', $missingAttrs));
         }
 
-        // Créer un nouvel ID pour le projet importé
-        $newId = "proj_" . substr(md5(uniqid('', true)), 0, 9);
+		$title = trim($data['title'] ?? 'Sans titre');
 
-        // Optionnel : modifier le titre pour indiquer que c'est un clone
-        $title = trim($data['title'] ?? 'Sans titre');
-        $data['title'] = $title . " (clone)";
+		// Vérifier si un projet avec ce titre existe déjà
+		$existingTitles = array_column(listProjects($_SESSION['user']), 'title');
+		if (in_array($title, $existingTitles)) {
+			$title .= " (clone)";
+		}
+
+		$data['title'] = $title;
 
         // Sauvegarder le projet importé avec nouvel ID
         importProject($data);

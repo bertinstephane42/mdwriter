@@ -1,22 +1,39 @@
 <?php
 session_start();
-if (!isset($_SESSION['user'])) { header("Location: login.php"); exit; }
-require_once __DIR__ . '/../inc/projects.php';
-$projectId = $_GET['id'] ?? null;
-$project = null;
+if (!isset($_SESSION['user'])) {
+    header("Location: login.php");
+    exit;
+}
 
-if ($projectId) {
+require_once __DIR__ . '/../inc/projects.php';
+
+// Récupération des paramètres GET
+$mode = $_GET['mode'] ?? null;
+$projectId = $_GET['id'] ?? null;
+
+$project = null;
+$isTemplate = false;
+
+if ($mode === 'new') {
+    // Mode création d'un nouveau projet (projet vide)
+    $project = null;
+
+} elseif ($projectId) {
+    // Mode édition d'un projet existant
     try {
         $project = loadProject($projectId);
     } catch (Exception $e) {
         die("Erreur lors du chargement du projet : " . htmlspecialchars($e->getMessage()));
     }
-}
-if ($project && !empty($project['isTemplate']) && $project['isTemplate'] === true) {
-    // Protéger le template contre toute modification
-    $isTemplate = true;
+
+    if (!empty($project['isTemplate']) && $project['isTemplate'] === true) {
+        // Protéger le template contre toute modification
+        $isTemplate = true;
+    }
+
 } else {
-    $isTemplate = false;
+    // Ni mode=new ni id fourni → refuser l'accès
+    die("Aucun projet spécifié.");
 }
 ?>
 <!DOCTYPE html>

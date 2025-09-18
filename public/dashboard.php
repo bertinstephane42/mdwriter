@@ -188,7 +188,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST'
 	<div class="dashboard-actions" style="display:flex; flex-wrap:wrap; justify-content:center; gap:10px;">
 
 		<!-- Ligne 1 : Nouveau rapport, Importer rapport, Gérer les utilisateurs, Voir le journal -->
-		<a class="btn" href="editor.php">➕ Nouveau rapport</a>
+		<a class="btn" href="editor.php?mode=new">➕ Nouveau rapport</a>
 
 		<form id="importForm" action="import_project.php" method="post" enctype="multipart/form-data" style="display:none;">	
 			<input type="file" id="importFile" name="projectFile" accept="application/json" style="display:none;">
