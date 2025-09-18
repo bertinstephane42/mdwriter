@@ -372,10 +372,9 @@ document.addEventListener("DOMContentLoaded", function() {
 			if (data.success) {
 				saveMessage.textContent = "Sauvegarde réussie ✅";
 				markSaved();
-				setTimeout(() => saveMessage.textContent = "", 3000);
-
 				// Mettre à jour l'ID si nouveau projet
 				form.querySelector('input[name="id"]').value = data.id;
+				setTimeout(() => saveMessage.textContent = "", 3000);
 			} else {
 				saveMessage.textContent = "Erreur lors de la sauvegarde ❌";
 				console.error("Erreur côté serveur :", data.error);
