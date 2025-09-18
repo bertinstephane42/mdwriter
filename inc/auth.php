@@ -180,20 +180,37 @@ function register($username, $password, $role = 'user') {
         return ['success' => false, 'error' => "Impossible de créer le répertoire utilisateur."];
     }
 
-    // --- Copie du template JSON ---
-    $templateFile = __DIR__ . "/../public/templates/template1.json";
-    if (file_exists($templateFile)) {
-        $randomStr = bin2hex(random_bytes(8)); // 16 caractères hex
-        $newFile = "$projectsDir/proj_$randomStr.json";
+	// --- Copie de tous les templates JSON ---
+	$templateDir = __DIR__ . "/../public/templates";
+	$templates = glob("$templateDir/template??.json"); // recherche template??.json
 
-        if (!copy($templateFile, $newFile)) {
-            log_auth($username, "Erreur copie du template JSON");
-            error_log("Erreur lors de la copie du template pour l'utilisateur $username");
-        }
-    } else {
-        log_auth($username, "Template JSON manquant");
-        error_log("Template non trouvé : $templateFile");
-    }
+	if ($templates !== false && count($templates) > 0) {
+		// Trier les fichiers par ordre numérique sur le numéro du template
+		usort($templates, function($a, $b) {
+			// extraire le numéro du fichier : template01.json => 01
+			preg_match('/template(\d{2})\.json$/', $a, $matchA);
+			preg_match('/template(\d{2})\.json$/', $b, $matchB);
+			return intval($matchA[1]) - intval($matchB[1]);
+		});
+
+		foreach ($templates as $templateFile) {
+			if (file_exists($templateFile)) {
+				$randomStr = bin2hex(random_bytes(8)); // chaîne aléatoire de 16 caractères
+				$newFile = "$projectsDir/proj_$randomStr.json";
+
+				if (!copy($templateFile, $newFile)) {
+					log_auth($username, "Erreur copie du template JSON");
+					error_log("Erreur lors de la copie du template {$templateFile} pour l'utilisateur $username");
+				}
+			} else {
+				log_auth($username, "Template JSON manquant");
+				error_log("Template non trouvé : $templateFile");
+			}
+		}
+	} else {
+		log_auth($username, "Aucun template JSON trouvé");
+		error_log("Aucun fichier template??.json trouvé dans $templateDir");
+	}
 
     // ✅ Journalisation création de compte réussie
     log_auth($username, "Compte créé avec succès");

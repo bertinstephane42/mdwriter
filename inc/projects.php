@@ -45,6 +45,15 @@ function listProjects(): array {
         ];
     }
 
+    // Tri : d'abord les templates, ensuite le reste
+    usort($projects, function($a, $b) {
+        if ($a['isTemplate'] === $b['isTemplate']) {
+            // Si les deux sont du même type, trier par date décroissante
+            return strcmp($b['date'], $a['date']);
+        }
+        return $a['isTemplate'] ? -1 : 1; // templates en premier
+    });
+
     return $projects;
 }
 
@@ -70,14 +79,19 @@ function saveProject(string $title, string $markdown): string {
     }
 
     $dir = projects_dir();
-    $id = uniqid("proj_");
+
+    // 🔒 Générer un ID unique garanti
+    do {
+        $id = "proj_" . bin2hex(random_bytes(8)); // 16 caractères aléatoires
+        $file = "$dir/$id.json";
+    } while (file_exists($file));
+
     $data = [
         'title' => $title,
         'markdown' => $markdown,
         'date' => date("Y-m-d H:i")
     ];
 
-    $file = "$dir/$id.json";
     if (file_put_contents($file, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) === false) {
         throw new RuntimeException("Impossible de sauvegarder le projet.");
     }
