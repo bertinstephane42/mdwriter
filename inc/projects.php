@@ -60,10 +60,8 @@ function listProjects(): array {
 /**
  * Sauvegarde un nouveau projet
  */
-function saveProject(string $title, string $markdown): string {
+function saveOrUpdateProject(?string $id, string $title, string $markdown): array {
     $title = trim($title);
-
-    // Vérification du titre
     if ($title === '') {
         throw new InvalidArgumentException("Le titre est obligatoire.");
     }
@@ -71,22 +69,27 @@ function saveProject(string $title, string $markdown): string {
         throw new InvalidArgumentException("Le titre ne doit pas dépasser 25 caractères.");
     }
 
-    // Vérification de la taille du Markdown
     $markdown = is_string($markdown) ? $markdown : '';
-    $maxLength = 500000; // 500 000 caractères (~0,5 Mo)
+    $maxLength = 500000;
     if (mb_strlen($markdown) > $maxLength) {
         throw new InvalidArgumentException("Le contenu du projet est trop long. Limite : {$maxLength} caractères.");
     }
 
     $dir = projects_dir();
 
-    // 🔒 Générer un ID unique garanti
-    do {
-        $id = "proj_" . bin2hex(random_bytes(8)); // 16 caractères aléatoires
+    // Si pas d'ID ou fichier inexistant → création
+    if (empty($id) || !file_exists("$dir/$id.json")) {
+        do {
+            $id = "proj_" . bin2hex(random_bytes(8));
+            $file = "$dir/$id.json";
+        } while (file_exists($file));
+    } else {
+        $id = basename($id); // sécuriser
         $file = "$dir/$id.json";
-    } while (file_exists($file));
+    }
 
     $data = [
+        'id' => $id,
         'title' => $title,
         'markdown' => $markdown,
         'date' => date("Y-m-d H:i")
@@ -96,46 +99,7 @@ function saveProject(string $title, string $markdown): string {
         throw new RuntimeException("Impossible de sauvegarder le projet.");
     }
 
-    return $id;
-}
-
-/**
- * Met à jour un projet existant
- */
-function updateProject(string $id, string $title, string $markdown): void {
-    $id = basename($id);
-    $file = projects_dir() . "/$id.json";
-
-    if (!file_exists($file)) {
-        throw new RuntimeException("Le projet $id n'existe pas.");
-    }
-
-    $title = trim($title);
-
-    // Vérification du titre
-    if ($title === '') {
-        throw new InvalidArgumentException("Le titre est obligatoire.");
-    }
-    if (mb_strlen($title) > 25) {
-        throw new InvalidArgumentException("Le titre ne doit pas dépasser 25 caractères.");
-    }
-
-    // Vérification de la taille du Markdown
-    $markdown = is_string($markdown) ? $markdown : '';
-    $maxLength = 500000;
-    if (mb_strlen($markdown) > $maxLength) {
-        throw new InvalidArgumentException("Le contenu du projet est trop long. Limite : {$maxLength} caractères.");
-    }
-
-    $data = [
-        'title' => $title,
-        'markdown' => $markdown,
-        'date' => date("Y-m-d H:i")
-    ];
-
-    if (file_put_contents($file, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) === false) {
-        throw new RuntimeException("Impossible de mettre à jour le projet.");
-    }
+    return $data;
 }
 
 /**
@@ -245,18 +209,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     try {
         if ($title === '') throw new InvalidArgumentException("Le titre est obligatoire.");
 
-        if ($id && file_exists(projects_dir() . '/' . basename($id) . '.json')) {
-            updateProject($id, $title, $markdown);
-        } else {
-            $id = saveProject($title, $markdown);
-        }
+        // Utilisation de saveOrUpdateProject : crée ou met à jour selon la présence de l'ID
+        $savedProject = saveOrUpdateProject($id ?: null, $title, $markdown);
 
         if (ob_get_length()) ob_clean();
-        echo json_encode(["success" => true, "id" => $id]);
+        echo json_encode([
+            "success" => true,
+            "id" => $savedProject['id'] // Toujours retourner l'ID du projet
+        ]);
     } catch (Exception $e) {
         if (ob_get_length()) ob_clean();
         http_response_code(500);
-        echo json_encode(["success" => false, "error" => $e->getMessage()]);
+        echo json_encode([
+            "success" => false,
+            "error" => $e->getMessage()
+        ]);
     }
     exit;
 }
