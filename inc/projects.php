@@ -152,20 +152,21 @@ function importProject(array $data): string {
     $allowedKeys = ['title', 'markdown', 'date', 'isTemplate'];
     $projectData = array_intersect_key($data, array_flip($allowedKeys));
 
-	// --- Validation et adaptation du titre pour clone ---
-	$title = trim($projectData['title'] ?? 'Sans titre');
+    // --- Validation du titre ---
+    $title = trim($projectData['title'] ?? '');
+    if ($title === '') {
+        throw new InvalidArgumentException("Le projet doit posséder un titre.");
+    }
+    if (mb_strlen($title) > 25) {
+        throw new InvalidArgumentException("Le titre ne peut pas posséder plus de 25 caractères.");
+    }
+    $projectData['title'] = $title;
 
-	// Ajouter "(clone)" uniquement si ce n'est pas déjà présent
-	if (strpos($title, '(clone)') === false) {
-		$title .= " (clone)";
-	}
-
-	// Tronquer le titre pour ne pas dépasser 25 caractères
-	if (mb_strlen($title) > 25) {
-		$title = mb_substr($title, 0, 25);
-	}
-
-	$projectData['title'] = $title;
+    // --- Refuser l'import de templates ---
+    if (!empty($projectData['isTemplate'])) {
+        throw new InvalidArgumentException("Impossible d'importer un projet de type template.");
+    }
+    $projectData['isTemplate'] = false;
 
     // --- Validation du Markdown ---
     $markdown = $projectData['markdown'] ?? '';
@@ -182,14 +183,19 @@ function importProject(array $data): string {
     }
     $projectData['date'] = $date;
 
-    // --- Validation de isTemplate ---
-    $projectData['isTemplate'] = !empty($projectData['isTemplate']);
-
     // --- Génération ID et sauvegarde ---
-    $id = uniqid("proj_");
-    $file = "$dir/$id.json";
+    $id = null; 
 
-    if (file_put_contents($file, json_encode($projectData, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) === false) {
+    do {
+        $id = "proj_" . bin2hex(random_bytes(8));
+        $file = "$dir/$id.json";
+    } while (file_exists($file));
+
+
+    if (file_put_contents(
+        $file,
+        json_encode($projectData, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
+    ) === false) {
         throw new RuntimeException("Impossible de sauvegarder le projet importé.");
     }
 
