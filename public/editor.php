@@ -107,50 +107,34 @@ if ($project && !empty($project['isTemplate']) && $project['isTemplate'] === tru
       <li>🖥️ <strong>Plein écran</strong> : plus d’espace pour écrire.</li>
     </ul>
 
-    <p><em>Astuce :</em> Vous pouvez afficher un caractère spécial (comme <code>*</code> ou <code>#</code>) sans qu’il soit interprété en le précédant d’un <code>\</code> :</p>
-    <pre><code>\*ce texte n'est pas en italique\*</code></pre>
+    <!-- =================== ASTUCES =================== -->
+    <h3>Astuces supplémentaires</h3>
+    <ul>
+      <li>Utiliser <em>preview</em> pour voir le rendu final.</li>
+      <li>Utiliser <em>side-by-side</em> pour éditer et voir le rendu en même temps.</li>
+      <li>Utiliser <em>fullscreen</em> pour se concentrer sur l’écriture.</li>
+    </ul>
 
     <!-- =================== MISE EN FORME =================== -->
     <h3>Mise en forme</h3>
     <pre><code>**gras**
 *italique*
+_italique_
 ~~barré~~</code></pre>
 
     <!-- =================== SAUTS DE LIGNE =================== -->
     <h3>Sauts de ligne et paragraphes</h3>
     <p><strong>⚠️ Attention :</strong> le comportement diffère entre l’éditeur (HTML) et l’export PDF.</p>
     <ul>
-      <li><strong>Dans l’éditeur (HTML) :</strong>  
-        - Un <em>retour à la ligne forcé</em> s’obtient en ajoutant <code>··</code> (deux espaces) à la fin d’une ligne → cela génère un simple saut de ligne (<code>&lt;br&gt;</code>).  
-        - Un <em>nouveau paragraphe</em> s’obtient en laissant une ligne vide.
+      <li><strong>Dans l’éditeur (HTML) :</strong><br>
+        - Un retour à la ligne forcé s’obtient en ajoutant deux espaces à la fin d’une ligne → cela génère un simple saut de ligne (<code>&lt;br&gt;</code>).<br>
+        - Un nouveau paragraphe s’obtient en laissant une ligne vide.
       </li>
-      <li><strong>Dans le PDF :</strong>  
-        - Un <em>retour à la ligne forcé</em> (deux espaces en fin de ligne) est interprété comme un <u>nouveau paragraphe</u>.  
-        - Un <em>nouveau paragraphe</em> (ligne vide) reste un nouveau paragraphe.</li>
+      <li><strong>Dans le PDF :</strong><br>
+        - Un retour à la ligne forcé est interprété comme un nouveau paragraphe.<br>
+        - Un nouveau paragraphe (ligne vide) reste un nouveau paragraphe.
+      </li>
     </ul>
-
-    <p><em>Exemple Markdown :</em></p>
-    <pre><code>Phrase sur la première ligne··
-Phrase juste en dessous (saut de ligne forcé)
-
-Phrase encore plus bas (nouveau paragraphe car ligne vide)
-</code></pre>
-    <p><small>(ici, <code>··</code> représente deux espaces tapés au clavier)</small></p>
-
-    <p><em>Rendu attendu :</em></p>
-    <div style="border:1px solid #ccc; padding:10px; margin-bottom:10px;">
-      <p><strong>Dans l’éditeur (HTML) :</strong><br>
-      Phrase sur la première ligne<br>
-      Phrase juste en dessous (saut de ligne forcé)</p>
-      <p>Phrase encore plus bas (nouveau paragraphe car ligne vide)</p>
-
-      <hr>
-
-      <p><strong>Dans le PDF :</strong></p>
-      <p>Phrase sur la première ligne</p>
-      <p>Phrase juste en dessous (nouveau paragraphe dans le PDF)</p>
-      <p>Phrase encore plus bas (nouveau paragraphe car ligne vide)</p>
-    </div>
 
     <!-- =================== TITRES =================== -->
     <h3>Titres</h3>
@@ -194,26 +178,37 @@ Paragraphe suivant.
     <!-- =================== TABLEAUX =================== -->
     <h3>Tableaux</h3>
     <pre><code>| Colonne 1 | Colonne 2 | Colonne 3 |
-| -------- | -------- | -------- |
-| John     | Doe      | Homme    |
-| Mary     | Smith    | Femme    |
+| --------- | --------- | --------- |
+| Alice     | Martin    | Femme     |
+| Bob       | Dupont    | Homme     |
 </code></pre>
 
     <!-- =================== CODE =================== -->
     <h3>Afficher du code</h3>
-    <pre><code>`var exemple = "bonjour !";`</code></pre>
+    <pre><code>`console.log("Hello World!");`</code></pre>
 
     <p><em>Ou sur plusieurs lignes :</em></p>
     <pre><code>
-&#96;&#96;&#96;bash
-exemple="bonjour !"
+```bash
+exemple="Bonjour !"
 echo "$exemple"
-&#96;&#96;&#96;
+```
 </code></pre>
 
-    <!-- =================== REGLE HORIZONTALE =================== -->
-    <h3>Règle horizontale</h3>
-    <pre><code>---</code></pre>
+<!-- =================== REGLE HORIZONTALE =================== -->
+<h3>Règle horizontale</h3>
+<pre><code>---</code></pre>
+<pre><code>-----</code></pre>
+<p><small>(les deux sont valides)</small></p>
+
+<!-- =================== CARACTÈRES ÉCHAPPÉS =================== -->
+<h3>Caractères échappés</h3>
+<p>Pour afficher un caractère spécial sans qu’il soit interprété, ajoutez un <code>\</code> devant :</p>
+<pre><code>\*Ce texte n'est pas en italique\*
+
+\_Ce texte n'est pas en italique non plus\_
+\# Ceci n'est pas un titre</code></pre>
+
   </div>
 </div>
 

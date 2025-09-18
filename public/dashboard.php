@@ -455,32 +455,49 @@ table th, table td {
 </style>
 
 <script>
-document.querySelectorAll('.action-delete').forEach(link => {
-    link.addEventListener('click', function(e) {
-        const isTemplate = this.dataset.istemplate === "1";
+document.body.addEventListener('click', function(e) {
+    const link = e.target.closest('.action-edit, .action-delete, .action-export, .btn-export-pdf');
+    if (!link) return;
 
-        if (isTemplate) {
-            e.preventDefault();
+    e.preventDefault(); // Bloquer l’action par défaut
+
+    let action;
+    let proceed = false; // flag pour savoir si on peut lancer l'action
+
+    // Éditer
+    if (link.classList.contains('action-edit')) {
+        action = "éditer ce projet";
+        proceed = confirm("Voulez-vous vraiment " + action + " ?");
+
+        if (proceed) window.location.href = link.href;
+    }
+    // Supprimer
+    else if (link.classList.contains('action-delete')) {
+        if (link.dataset.istemplate === "1") {
             alert("⚠️ Ce modèle ne peut pas être supprimé.");
-            return false;
+            return; // stop net
         }
+        action = "supprimer ce projet (action irréversible)";
+        proceed = confirm("Voulez-vous vraiment " + action + " ?");
 
-        if (!confirm("Voulez-vous vraiment supprimer ce projet ? Cette action est irréversible.")) {
-            e.preventDefault();
-        }
-    });
-});
+        if (proceed) window.location.href = link.href;
+    }
+    // Export PDF
+    else if (link.classList.contains('btn-export-pdf')) {
+        action = "exporter ce projet en PDF";
+        proceed = confirm("Voulez-vous vraiment " + action + " ?");
 
-// Confirmation pour toutes les actions utilisateur
-document.querySelectorAll('.action-edit, .action-export, .btn-export-pdf').forEach(link => {
-    link.addEventListener('click', function(e) {
-        const action = this.classList.contains('action-edit') ? "éditer ce projet" :
-                       this.classList.contains('btn-export-pdf') ? "exporter en PDF" :
-                       "exporter ce projet";
-        if (!confirm("Voulez-vous vraiment " + action + " ?")) {
-            e.preventDefault();
-        }
-    });
+        if (proceed) exportProjectPDF(link.dataset.id);
+    }
+    // Export JSON / MD / HTML
+    else if (link.classList.contains('action-export')) {
+        const url = new URL(link.href, window.location.href);
+        const format = url.searchParams.get("format") || "ce format";
+        action = "exporter ce projet en " + format.toUpperCase();
+        proceed = confirm("Voulez-vous vraiment " + action + " ?");
+
+        if (proceed) window.location.href = link.href;
+    }
 });
 
 <?php if(is_admin()): ?>
@@ -651,6 +668,28 @@ function blobToDataURL(blob) {
 					]
 				};
 			}
+
+			case "hr":
+				return {
+					table: {
+						widths: ['*'],
+						body: [['']] // une cellule vide
+					},
+					layout: {
+						// Dessine uniquement la ligne horizontale en bas (pleine largeur)
+						hLineWidth: function(i, node) {
+							// i === node.table.body.length correspond à la ligne sous la dernière rangée
+							return (i === node.table.body.length) ? 1 : 0;
+						},
+						hLineColor: function(i, node) { return '#cccccc'; },
+						vLineWidth: function() { return 0; },
+						paddingTop: function() { return 0; },
+						paddingBottom: function() { return 0; },
+						paddingLeft: function() { return 0; },
+						paddingRight: function() { return 0; }
+					},
+					margin: [0, 10, 0, 10]
+				};
 
 			case "pre":
 				return {
@@ -880,25 +919,26 @@ async function exportProjectPDF(projectId) {
         // 5️⃣ Récupérer le titre du projet pour le nom du PDF
         let titleElement = doc.querySelector('title') || doc.querySelector('h1');
         let title = titleElement ? titleElement.textContent.trim() : 'export';
-        // Nettoyer le titre pour supprimer caractères non autorisés dans un nom de fichier
-        title = title.replace(/[\\\/:*?"<>|]/g, '_');
 
-        // 6️⃣ Créer et télécharger le PDF avec le nom dynamique
-        pdfMake.createPdf(docDefinition).download(`export_${title}.pdf`);
+		// 1️⃣ Normaliser et enlever les accents
+		title = title.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
+		// 2️⃣ Remplacer les caractères interdits et espaces par "-"
+		title = title.replace(/[\\\/:*?"<>| ]+/g, '-');
+
+		// 3️⃣ Supprimer les doublons de "-"
+		title = title.replace(/-+/g, '-');
+
+		// 4️⃣ Supprimer les tirets en début et fin
+		title = title.replace(/^-|-$/g, '');
+
+		// 5️⃣ Télécharger avec le nom propre
+		pdfMake.createPdf(docDefinition).download(`export-${title}.pdf`);
     } catch (error) {
         console.error("Erreur lors de l'export PDF :", error);
         alert("Impossible de générer le PDF. Vérifie la console pour plus de détails.");
     }
 }
-
-// Écoute du clic
-document.body.addEventListener('click', function(e) {
-    const btn = e.target.closest('.btn-export-pdf');
-    if (!btn) return;
-    e.preventDefault();
-    exportProjectPDF(btn.dataset.id);
-});
 
 // Modal mot de passe
 const openPasswordModal = document.getElementById('openPasswordModal');
