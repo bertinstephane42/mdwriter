@@ -140,8 +140,9 @@ function login($username, $password) {
 
 function register($username, $password, $role = 'user') { 
     $users = load_users();
-	// --- Vérification de la longueur du login ---
-	if (strlen($username) < 3 || strlen($username) > 15) {
+
+    // --- Vérification de la longueur du login ---
+    if (strlen($username) < 3 || strlen($username) > 15) {
         log_auth($username, "Échec création compte : login invalide");
         return ['success' => false, 'error' => "Le nom d'utilisateur doit contenir entre 3 et 15 caractères."];
     }
@@ -152,7 +153,7 @@ function register($username, $password, $role = 'user') {
         return ['success' => false, 'error' => "Le nom d'utilisateur ne peut contenir que des lettres, chiffres et underscores (_)."];
     }
 	
-	// --- Vérification si le login existe déjà ---
+    // --- Vérification si le login existe déjà ---
     if (isset($users[$username])) {
         log_auth($username, "Échec création compte : login déjà utilisé");
         return ['success' => false, 'error' => "Nom d'utilisateur déjà pris."];
@@ -162,6 +163,13 @@ function register($username, $password, $role = 'user') {
     if (!preg_match('/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\/.!+?=\-_*$]).{10,}$/', $password)) {
         log_auth($username, "Échec création compte : mot de passe faible");
         return ['success' => false, 'error' => "Le mot de passe doit contenir au moins 10 caractères, dont une majuscule, une minuscule, un chiffre et un caractère spécial (/ . ! + ? = - _ * $)."];
+    }
+
+    // --- Détection du premier compte : il devient admin ---
+    if (empty($users)) {
+        $role = 'admin';
+    } else {
+        $role = 'user'; // tous les suivants seront "user"
     }
 
     // --- Création de l'utilisateur ---
@@ -180,40 +188,39 @@ function register($username, $password, $role = 'user') {
         return ['success' => false, 'error' => "Impossible de créer le répertoire utilisateur."];
     }
 
-	// --- Copie de tous les templates JSON ---
-	$templateDir = __DIR__ . "/../public/templates";
-	$templates = glob("$templateDir/template??.json"); // recherche template??.json
+    // --- Copie de tous les templates JSON ---
+    $templateDir = __DIR__ . "/../public/templates";
+    $templates = glob("$templateDir/template??.json"); // recherche template??.json
 
-	if ($templates !== false && count($templates) > 0) {
-		// Trier les fichiers par ordre numérique sur le numéro du template
-		usort($templates, function($a, $b) {
-			// extraire le numéro du fichier : template01.json => 01
-			preg_match('/template(\d{2})\.json$/', $a, $matchA);
-			preg_match('/template(\d{2})\.json$/', $b, $matchB);
-			return intval($matchA[1]) - intval($matchB[1]);
-		});
+    if ($templates !== false && count($templates) > 0) {
+        // Trier les fichiers par ordre numérique
+        usort($templates, function($a, $b) {
+            preg_match('/template(\d{2})\.json$/', $a, $matchA);
+            preg_match('/template(\d{2})\.json$/', $b, $matchB);
+            return intval($matchA[1]) - intval($matchB[1]);
+        });
 
-		foreach ($templates as $templateFile) {
-			if (file_exists($templateFile)) {
-				$randomStr = bin2hex(random_bytes(8)); // chaîne aléatoire de 16 caractères
-				$newFile = "$projectsDir/proj_$randomStr.json";
+        foreach ($templates as $templateFile) {
+            if (file_exists($templateFile)) {
+                $randomStr = bin2hex(random_bytes(8)); 
+                $newFile = "$projectsDir/proj_$randomStr.json";
 
-				if (!copy($templateFile, $newFile)) {
-					log_auth($username, "Erreur copie du template JSON");
-					error_log("Erreur lors de la copie du template {$templateFile} pour l'utilisateur $username");
-				}
-			} else {
-				log_auth($username, "Template JSON manquant");
-				error_log("Template non trouvé : $templateFile");
-			}
-		}
-	} else {
-		log_auth($username, "Aucun template JSON trouvé");
-		error_log("Aucun fichier template??.json trouvé dans $templateDir");
-	}
+                if (!copy($templateFile, $newFile)) {
+                    log_auth($username, "Erreur copie du template JSON");
+                    error_log("Erreur lors de la copie du template {$templateFile} pour l'utilisateur $username");
+                }
+            } else {
+                log_auth($username, "Template JSON manquant");
+                error_log("Template non trouvé : $templateFile");
+            }
+        }
+    } else {
+        log_auth($username, "Aucun template JSON trouvé");
+        error_log("Aucun fichier template??.json trouvé dans $templateDir");
+    }
 
     // ✅ Journalisation création de compte réussie
-    log_auth($username, "Compte créé avec succès");
+    log_auth($username, "Compte créé avec succès (rôle : $role)");
 
     return ['success' => true];
 }
