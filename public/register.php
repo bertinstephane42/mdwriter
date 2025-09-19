@@ -43,6 +43,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             une majuscule, une minuscule, un chiffre et un caractère spécial (<code>/ . ! + ? = - _ * $</code>).
         </small>
 
+        <!-- Avertissement sur le rôle -->
+        <div class="role-warning">
+            ⚠️ Attention : le tout premier compte créé sera automatiquement promu <strong>administrateur</strong>.  
+            Tous les autres comptes seront enregistrés comme <strong>utilisateurs</strong>.
+        </div>
+
         <input type="submit" value="S'inscrire">
     </form>
 
@@ -98,6 +104,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     margin-bottom: 10px;
 }
 
+.role-warning {
+    margin: 15px 0;
+    padding: 10px;
+    font-size: 0.9em;
+    color: #856404;
+    background-color: #fff3cd;
+    border: 1px solid #ffeeba;
+    border-radius: 5px;
+    text-align: left;
+}
+
 .register-link {
     margin-top: 15px;
 }
@@ -125,7 +142,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             setTimeout(() => {
                 errorMsg.style.transition = "opacity 0.5s ease";
                 errorMsg.style.opacity = "0";
-                setTimeout(() => errorMsg.remove(), 500); // supprime complètement l'élément
+                setTimeout(() => errorMsg.remove(), 500);
             }, 5000);
         }
     });
