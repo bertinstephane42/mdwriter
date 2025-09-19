@@ -193,6 +193,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </style>
 
 <script>
+    // Masquer le message d'erreur après 5 secondes
 window.addEventListener('DOMContentLoaded', () => {
     const helpBtn = document.getElementById('help-btn');
     const modal = document.getElementById('help-modal');
@@ -209,6 +210,14 @@ window.addEventListener('DOMContentLoaded', () => {
             modal.style.display = 'none';
         }
     });
+	const errorMsg = document.querySelector('.error-msg');
+    if (errorMsg) {
+        setTimeout(() => {
+            errorMsg.style.transition = "opacity 0.5s ease";
+            errorMsg.style.opacity = "0";
+            setTimeout(() => errorMsg.remove(), 500);
+        }, 5000);
+	}
 });
 </script>
 </body>
